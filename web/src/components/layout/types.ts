@@ -16,8 +16,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { type LinkProps } from '@tanstack/react-router'
-import { type TFunction } from 'i18next'
+import type { LinkProps } from '@tanstack/react-router'
+import type { TFunction } from 'i18next'
 
 /**
  * Base navigation item type
@@ -27,7 +27,16 @@ type BaseNavItem = {
   badge?: string
   icon?: React.ElementType
   activeUrls?: (LinkProps['to'] | (string & {}))[]
+  /**
+   * Routes whose sidebar module toggles decide this item's visibility: it is
+   * shown while any of them is enabled. Defaults to the item's own url.
+   */
   configUrls?: (LinkProps['to'] | (string & {}))[]
+  /**
+   * Titles keyed by configUrl. When the item's own url is disabled, the item
+   * links to the first enabled configUrl instead and takes its title here.
+   */
+  configTitles?: Partial<Record<string, string>>
   /**
    * Minimum role required to see this item in the sidebar. When set, the item
    * is hidden for users whose role is below this threshold (see

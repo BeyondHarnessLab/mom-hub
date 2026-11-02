@@ -235,6 +235,30 @@ function isNavItemVisible(
 }
 
 /**
+ * Point a link whose own route is disabled at the first enabled route among
+ * its configUrls, under that route's title. A link with no enabled configUrl
+ * is left as is for isNavItemVisible to hide.
+ */
+function resolveConfiguredLink(
+  item: NavItem,
+  adminConfig: SidebarModulesAdminConfig,
+  userConfig: SidebarModulesUserConfig
+): NavItem {
+  if (!('url' in item) || !item.url || !item.configUrls) return item
+  if (isModuleEnabled(item.url as string, adminConfig, userConfig)) return item
+
+  const enabledUrl = item.configUrls.find((url) =>
+    isModuleEnabled(url as string, adminConfig, userConfig)
+  )
+  if (!enabledUrl) return item
+  return {
+    ...item,
+    url: enabledUrl,
+    title: item.configTitles?.[enabledUrl as string] ?? item.title,
+  }
+}
+
+/**
  * Filter navigation items
  */
 function filterNavItems(
@@ -255,7 +279,7 @@ function filterNavItems(
           items: filteredSubItems,
         }
       }
-      return item
+      return resolveConfiguredLink(item, adminConfig, userConfig)
     })
     .filter((item) => isNavItemVisible(item, adminConfig, userConfig))
 }

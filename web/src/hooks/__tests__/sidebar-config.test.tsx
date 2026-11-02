@@ -180,3 +180,51 @@ describe('audit log sidebar entry', () => {
     expect(titles).toContain('Audit Logs')
   })
 })
+
+describe('task log sidebar entry', () => {
+  function generalItems(admin?: object, user?: object) {
+    const { result } = sidebarFor(admin, user)
+    return result.current.find((group) => group.id === 'general')?.items ?? []
+  }
+
+  it.each([
+    [{ console: { enabled: true, midjourney: true, task: false } }, undefined],
+    [undefined, { console: { enabled: true, task: false } }],
+  ])(
+    'turning Task Logs off while Drawing Logs stays on links the entry to drawing logs under their own title (%j, %j)',
+    (admin, user) => {
+      const items = generalItems(admin, user)
+      expect(items.map((item) => item.title)).not.toContain('Task Logs')
+      expect(items).toContainEqual(
+        expect.objectContaining({
+          title: 'Drawing Logs',
+          url: '/usage-logs/drawing',
+        })
+      )
+    }
+  )
+
+  it.each([
+    [{ console: { enabled: true, midjourney: false, task: false } }, undefined],
+    [
+      { console: { enabled: true, midjourney: false } },
+      { console: { enabled: true, task: false } },
+    ],
+  ])(
+    'turning both Task Logs and Drawing Logs off hides the entry (%j, %j)',
+    (admin, user) => {
+      const titles = generalItems(admin, user).map((item) => item.title)
+      expect(titles).not.toContain('Task Logs')
+      expect(titles).not.toContain('Drawing Logs')
+    }
+  )
+
+  it('with Task Logs on the entry links to task logs, drawing logs included', () => {
+    const items = generalItems({
+      console: { enabled: true, midjourney: true, task: true },
+    })
+    const entry = items.find((item) => item.title === 'Task Logs')
+    expect(entry).toMatchObject({ url: '/usage-logs/task' })
+    expect(entry && checkIsActive('/usage-logs/drawing', entry)).toBe(true)
+  })
+})

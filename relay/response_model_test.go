@@ -263,3 +263,37 @@ func TestResponseModelDoesNotRecordSynthesizedModel(t *testing.T) {
 	require.Nil(t, apiErr)
 	assert.Nil(t, info.ResponseModel)
 }
+
+// Claude and Gemini clients served through a Chat Completions upstream reach
+// the chat stream handler in their own relay mode, not RelayModeChatCompletions.
+func TestResponseModelChatStreamForConvertedClients(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	previousTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previousTimeout })
+	chatStream := "data: " + `{"id":"chat_1","model":"returned","choices":[{"index":0,"delta":{"role":"assistant","content":"hello"}}]}` + "\n\ndata: " + `{"id":"chat_1","model":"returned","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"usage":{"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}` + "\n\ndata: [DONE]\n\n"
+	for _, tc := range []struct {
+		name   string
+		format types.RelayFormat
+		mode   int
+	}{
+		{"claude messages", types.RelayFormatClaude, relayconstant.Path2RelayMode("/v1/messages")},
+		{"gemini", types.RelayFormatGemini, relayconstant.RelayModeGemini},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			c, _ := gin.CreateTestContext(httptest.NewRecorder())
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/messages", nil)
+			info := &relaycommon.RelayInfo{
+				OriginModelName: "requested", RelayFormat: tc.format, RelayMode: tc.mode,
+				IsStream: true, DisablePing: true, StartTime: time.Now(),
+				ChannelMeta:         &relaycommon.ChannelMeta{UpstreamModelName: "mapped"},
+				ThinkingContentInfo: relaycommon.ThinkingContentInfo{IsFirstThinkingContent: true},
+			}
+			_, apiErr := openai.OaiStreamHandler(c, info, &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(chatStream))})
+			require.Nil(t, apiErr)
+			assert.Equal(t, "returned", info.BillingResponseModel)
+			require.NotNil(t, info.ResponseModel)
+			assert.Equal(t, "returned", info.ResponseModel.ReturnedModel)
+		})
+	}
+}

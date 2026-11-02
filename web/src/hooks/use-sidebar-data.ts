@@ -103,6 +103,7 @@ export function useSidebarData(): SidebarData {
             url: '/usage-logs/task',
             activeUrls: ['/usage-logs/drawing'],
             configUrls: ['/usage-logs/drawing', '/usage-logs/task'],
+            configTitles: { '/usage-logs/drawing': t('Drawing Logs') },
             icon: ListTodo,
           },
         ],

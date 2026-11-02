@@ -117,10 +117,13 @@ function UsageLogsContent() {
     [setViewScope]
   )
 
-  const pageMeta =
-    activeCategory === 'common' ? SECTION_META.common : SECTION_META.task
   const showTaskSwitcher =
     activeCategory !== 'common' && visibleSections.length > 1
+  // Task Logs titles drawing and task logs together; a section shown on its
+  // own keeps its own title.
+  const pageMeta = showTaskSwitcher
+    ? SECTION_META.task
+    : SECTION_META[activeCategory]
 
   return (
     <>

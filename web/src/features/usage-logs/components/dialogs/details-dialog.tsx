@@ -63,7 +63,12 @@ import { pluginUsageSchema } from '@/features/pricing/lib/plugin-pricing'
 import { PolicyDecisionRecord } from '@/features/system-settings/request-policies/decision-record'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { formatBillingCurrencyFromUSD } from '@/lib/currency'
-import { formatLogQuota, formatTokens, formatUseTime } from '@/lib/format'
+import {
+  formatLogQuota,
+  formatPercent,
+  formatTokens,
+  formatUseTime,
+} from '@/lib/format'
 import { translateServerText } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
@@ -156,6 +161,20 @@ function isUsageBillingPathLocal(
   return adminInfo?.local_count_tokens === true
 }
 
+function responseModelBillingFallbackLabel(
+  fallback: string,
+  t: (key: string) => string
+): string {
+  if (fallback === 'no_response_model') return t('No response model declared')
+  if (fallback === 'unlisted_response_model') {
+    return t('Response model not listed')
+  }
+  if (fallback === 'unpriced_billing_model') {
+    return t('Billing model has no expression price')
+  }
+  return fallback
+}
+
 function quotaSaturationKindLabel(
   kind: 'overflow' | 'underflow' | 'nan',
   t: (key: string) => string
@@ -189,6 +208,9 @@ function BillingBreakdown(props: {
       label: t('Billing Mode'),
       value: t('Dynamic Pricing'),
     })
+    if (other.settle_model) {
+      rows.push({ label: t('Settled Model'), value: other.settle_model })
+    }
     if (tieredSummary) {
       if (tieredSummary.tier.label) {
         rows.push({
@@ -239,6 +261,13 @@ function BillingBreakdown(props: {
     rows.push({
       label: isUserGR ? t('User Exclusive Ratio') : t('Group Ratio'),
       value: `${formatRatio(effectiveGR)}x`,
+    })
+  }
+
+  if (other.fee_rate != null && other.fee_rate > 0) {
+    rows.push({
+      label: t('Fee Rate'),
+      value: `+${formatPercent(other.fee_rate * 100)}`,
     })
   }
 
@@ -352,6 +381,13 @@ function BillingBreakdown(props: {
       label: t('Billing Path'),
       value: getUsageBillingPathLabel(t, other.admin_info),
     })
+    const fallback = other.admin_info.response_model_billing?.fallback
+    if (fallback) {
+      rows.push({
+        label: t('Kept entry price'),
+        value: responseModelBillingFallbackLabel(fallback, t),
+      })
+    }
   }
 
   const usageFacts =

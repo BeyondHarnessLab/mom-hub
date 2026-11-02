@@ -39,7 +39,7 @@ func PrepareImageBillingForRequest(c *gin.Context, info *relaycommon.RelayInfo, 
 		if runErr != nil {
 			return types.NewErrorWithStatusCode(runErr, types.ErrorCodeModelPriceError, http.StatusBadRequest, types.ErrOptionWithSkipRetry())
 		}
-		beforeGroup := cost / 1_000_000 * snap.QuotaPerUnit
+		beforeGroup := cost / 1_000_000 * snap.QuotaPerUnit * (1 + snap.FeeRate)
 		if trace.BillingUnit != billingexpr.BillingUnitRequest && snap.PreConsumeMultiplier != 0 {
 			beforeGroup *= snap.PreConsumeMultiplier
 		}

@@ -8,6 +8,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
@@ -220,6 +221,81 @@ func TestModelPriceHelperTieredRejectsPreConsumeOverflow(t *testing.T) {
 	require.ErrorAs(t, err, &clamp)
 	require.Equal(t, "QuotaRound", clamp.Op)
 	require.Equal(t, common.QuotaClampOverflow, clamp.Kind)
+}
+
+func TestResponseModelBillingSettlesAtDeclaredModelPricePlusFee(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	saved := map[string]string{}
+	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}))
+	t.Cleanup(func() {
+		require.NoError(t, config.GlobalConfig.LoadFromDB(saved))
+	})
+
+	require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.billing_mode":           `{"router/auto":"tiered_expr","auto/cheap":"tiered_expr"}`,
+		"billing_setting.billing_expr":           `{"router/auto":"tier(\"entry\", p * 10 + c * 50)","auto/cheap":"tier(\"cheap\", p * 1 + c * 5)"}`,
+		"billing_setting.response_model_billing": `{"router/auto":{"fee_rate":0.05,"models":{"vendor/cheap":"auto/cheap","vendor/unpriced":"auto/missing"}}}`,
+		"group_ratio_setting.group_ratio":        `{"default":2}`,
+		"quota_setting.pre_consume_multiplier":   "1",
+	}))
+
+	// Entry price at 1000 input / 200 output tokens: (1000*10 + 200*50) / 1M *
+	// 500K = 10000 quota; vendor/cheap: (1000*1 + 200*5) / 1M * 500K = 1000.
+	// Each is raised by the 5% fee, then doubled by the group ratio.
+	tests := []struct {
+		name             string
+		responseModel    string
+		wantQuota        int
+		wantBillingModel string
+		wantFallback     string
+		wantSettleModel  any
+	}{
+		{name: "listed model", responseModel: "vendor/cheap", wantQuota: 2100, wantBillingModel: "auto/cheap", wantSettleModel: "vendor/cheap"},
+		{name: "unlisted model", responseModel: "vendor/other", wantQuota: 21000, wantFallback: "unlisted_response_model"},
+		{name: "no declared model", wantQuota: 21000, wantFallback: "no_response_model"},
+		{name: "billing model lost its price", responseModel: "vendor/unpriced", wantQuota: 21000, wantFallback: "unpriced_billing_model"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+			ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+			ctx.Set("group", "default")
+			info := &relaycommon.RelayInfo{
+				OriginModelName:     "router/auto",
+				UserGroup:           "default",
+				UsingGroup:          "default",
+				BillingRequestInput: &billingexpr.RequestInput{Body: []byte(`{}`)},
+			}
+
+			priceData, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
+			require.NoError(t, err)
+			// 1000 * 10 / 1M * 500K * 1.05 * 2: the reservation includes the fee.
+			assert.Equal(t, 10500, priceData.QuotaToPreConsume)
+
+			info.ObserveResponseModel(tt.responseModel)
+			service.ApplyResponseModelBilling(ctx, info)
+			ok, quota, result := service.TryTieredSettle(info, billingexpr.TokenParams{P: 1000, C: 200, Len: 1000})
+			require.True(t, ok)
+			require.NotNil(t, result)
+			assert.Equal(t, tt.wantQuota, quota)
+
+			require.NotNil(t, info.ResponseModelBilling)
+			assert.Equal(t, tt.wantBillingModel, info.ResponseModelBilling.BillingModel)
+			assert.Equal(t, tt.wantFallback, info.ResponseModelBilling.Fallback)
+
+			other := model.NewLogOther()
+			service.InjectTieredBillingInfo(other, info, result)
+			logged := other.Snapshot()
+			assert.Equal(t, 0.05, logged["fee_rate"])
+			assert.Equal(t, tt.wantSettleModel, logged["settle_model"])
+			assert.Equal(t, *info.ResponseModelBilling, logged["admin_info"].(map[string]any)["response_model_billing"])
+		})
+	}
 }
 
 func TestModelPriceHelperRequestBillingRatiosOnlyApplyToFixedPrice(t *testing.T) {

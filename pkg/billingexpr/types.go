@@ -78,6 +78,7 @@ type BillingSnapshot struct {
 	EstimatedBillingUnit      BillingUnit    `json:"estimated_billing_unit,omitempty"`
 	EstimatedFixedPrice       *float64       `json:"estimated_fixed_price,omitempty"`
 	QuotaPerUnit              float64        `json:"quota_per_unit"`
+	FeeRate                   float64        `json:"fee_rate,omitempty"` // Markup on the expression price before the group ratio; 0.05 charges 5% more.
 	ExprVersion               int            `json:"expr_version"`
 	TaskUsageBilling          bool           `json:"task_usage_billing,omitempty"`
 	UsageFacts                map[string]any `json:"usage_facts,omitempty"`

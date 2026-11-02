@@ -177,6 +177,11 @@ type RelayInfo struct {
 	TieredBillingSnapshot *billingexpr.BillingSnapshot
 	BillingRequestInput   *billingexpr.RequestInput
 	BillingImageCount     *int
+	// BillingResponseModel is the first model the current attempt's upstream
+	// declared. ResponseModelBilling records how a response model billing rule
+	// used it at settlement; nil when the billing model has no rule.
+	BillingResponseModel string
+	ResponseModelBilling *ResponseModelBilling
 	// ImageRequestCount is the effective quantity sent on the current attempt;
 	// ImageQuotaBeforeGroup is the frozen legacy estimate before request ratios.
 	ImageRequestCount     int
@@ -267,6 +272,7 @@ func (info *RelayInfo) RequestedImageCount() int {
 
 func (info *RelayInfo) InitChannelMeta(c *gin.Context) {
 	info.ResponseModel = nil
+	info.BillingResponseModel = ""
 	info.FinalRequestRelayFormat = ""
 	info.RequestConversionChain = nil
 	info.InitRequestConversionChain()

@@ -12,6 +12,15 @@ type ResponseModel struct {
 	ReturnedModel  string `json:"returned_model"`
 }
 
+// ResponseModelBilling records how a response model billing rule settled a
+// request. BillingModel is the billing name whose expression priced it; it is
+// empty when the request kept the entry model's price, and Fallback says why.
+type ResponseModelBilling struct {
+	ResponseModel string `json:"response_model,omitempty"`
+	BillingModel  string `json:"billing_model,omitempty"`
+	Fallback      string `json:"fallback,omitempty"`
+}
+
 // matches reports whether an upstream declaration is compatible with the
 // requested or upstream model: equal ignoring case, a dated or variant name
 // that extends it, or the same name behind a provider path such as
@@ -37,9 +46,15 @@ func (r *ResponseModel) Mismatch() bool {
 // mismatches taking priority over provider-path, prefix, or case-only
 // differences. A later matching or empty event cannot erase it. Only observe
 // upstream declarations, never models synthesized by a response converter.
+//
+// It also records the first declaration in BillingResponseModel, which only a
+// configured response model billing rule may use for pricing.
 func (info *RelayInfo) ObserveResponseModel(model string) {
 	if info == nil || strings.TrimSpace(model) == "" {
 		return
+	}
+	if info.BillingResponseModel == "" {
+		info.BillingResponseModel = model
 	}
 	if info.ResponseModel == nil {
 		info.ResponseModel = &ResponseModel{

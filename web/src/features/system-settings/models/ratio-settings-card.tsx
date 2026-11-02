@@ -44,6 +44,7 @@ import { useUpdateOption } from '../hooks/use-update-option'
 import { positiveIntegerSchema } from '../utils/numeric-field'
 import { GroupRatioForm } from './group-ratio-form'
 import { ModelRatioForm } from './model-ratio-form'
+import { ResponseModelBillingSettings } from './response-model-billing-settings'
 import { ToolPriceSettings } from './tool-price-settings'
 import { UpstreamRatioSync } from './upstream-ratio-sync'
 import {
@@ -154,12 +155,14 @@ type RatioTabId =
   | 'unset-models'
   | 'groups'
   | 'tool-prices'
+  | 'response-model-billing'
   | 'upstream-sync'
 
 type RatioSettingsCardProps = {
   modelDefaults: ModelFormValues
   groupDefaults: GroupFormValues
   toolPricesDefault: string
+  responseModelBillingDefault?: string
   titleKey?: string
   visibleTabs?: RatioTabId[]
 }
@@ -168,6 +171,7 @@ export function RatioSettingsCard({
   modelDefaults: initialModelDefaults,
   groupDefaults,
   toolPricesDefault,
+  responseModelBillingDefault = '{}',
   titleKey = 'Pricing Ratios',
   visibleTabs = ['models', 'groups', 'tool-prices', 'upstream-sync'],
 }: RatioSettingsCardProps) {
@@ -458,6 +462,7 @@ export function RatioSettingsCard({
     'unset-models': 'Unset price models',
     groups: 'Group ratios',
     'tool-prices': 'Tool prices',
+    'response-model-billing': 'Response model billing',
     'upstream-sync': 'Upstream price sync',
   }
   const tabsGridClass =
@@ -519,6 +524,13 @@ export function RatioSettingsCard({
     }
     if (tab === 'tool-prices') {
       return <ToolPriceSettings defaultValue={toolPricesDefault} />
+    }
+    if (tab === 'response-model-billing') {
+      return (
+        <ResponseModelBillingSettings
+          defaultValue={responseModelBillingDefault}
+        />
+      )
     }
     return <UpstreamRatioSync />
   }

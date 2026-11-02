@@ -1,14 +1,17 @@
 package service
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/logger"
 	"github.com/QuantumNous/new-api/pkg/billingexpr"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/dto"
 	"github.com/QuantumNous/new-api/relaykit/relayconvert"
 	"github.com/QuantumNous/new-api/relaykit/types"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 	hosttypes "github.com/QuantumNous/new-api/types"
 	"github.com/gin-gonic/gin"
 )
@@ -235,6 +238,49 @@ func PrepareTieredBillingForSelectedGroup(c *gin.Context, relayInfo *relaycommon
 	}
 	relayInfo.FinalPreConsumedQuota = relayInfo.Billing.GetPreConsumedQuota()
 	return nil
+}
+
+// ApplyResponseModelBilling switches the frozen expression to the price of the
+// model the upstream declared, when the billing model's response model billing
+// rule lists it. Call it once, before token normalization, because the
+// replacement expression decides which token categories are priced apart.
+// Group ratio, request input and the fee stay frozen. A response that declares
+// no model or an unlisted one keeps the entry price, which should be the most
+// expensive model it can route to, and leaves an admin-visible fallback.
+func ApplyResponseModelBilling(ctx context.Context, relayInfo *relaycommon.RelayInfo) {
+	snap := relayInfo.TieredBillingSnapshot
+	if snap == nil || snap.BillingMode != billing_setting.BillingModeTieredExpr || snap.TaskUsageBilling {
+		return
+	}
+	rule, ok := billing_setting.GetResponseModelBillingRule(snap.ModelName)
+	if !ok || len(rule.Models) == 0 {
+		return
+	}
+
+	declared := relayInfo.BillingResponseModel
+	decision := &relaycommon.ResponseModelBilling{ResponseModel: declared}
+	relayInfo.ResponseModelBilling = decision
+	billingModel, listed := rule.Models[declared]
+	expression, priced := billing_setting.TokenBillingExpr(billingModel)
+	switch {
+	case declared == "":
+		decision.Fallback = "no_response_model"
+	case !listed:
+		decision.Fallback = "unlisted_response_model"
+	case !priced:
+		decision.Fallback = "unpriced_billing_model"
+	default:
+		settled := *snap
+		settled.ModelName = billingModel
+		settled.ExprString = expression
+		settled.ExprHash = billingexpr.ExprHashString(expression)
+		settled.ExprVersion = billingexpr.ExprVersion(expression)
+		relayInfo.TieredBillingSnapshot = &settled
+		decision.BillingModel = billingModel
+		return
+	}
+	logger.LogWarn(ctx, common.LogText("response model billing kept the entry price of %s: %s, response model %q",
+		snap.ModelName, decision.Fallback, declared))
 }
 
 // TryTieredSettle checks if the request uses tiered_expr billing and, if so,

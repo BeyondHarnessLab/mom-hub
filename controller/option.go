@@ -380,6 +380,11 @@ func UpdateOption(c *gin.Context) {
 				return
 			}
 		}
+	case billing_setting.ResponseModelBillingOption:
+		if err = billing_setting.ValidateResponseModelBilling(option.Value.(string)); err != nil {
+			common.ApiErrorT(c, "Invalid response model billing: {{error}}", map[string]any{"error": err.Error()})
+			return
+		}
 	case "console_setting.api_info":
 		err = console_setting.ValidateConsoleSettings(option.Value.(string), "ApiInfo")
 		if err != nil {

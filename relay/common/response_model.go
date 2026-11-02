@@ -1,6 +1,18 @@
 package common
 
-import "strings"
+import (
+	"bytes"
+	"strings"
+
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/relaykit/dto"
+	"github.com/tidwall/gjson"
+	"github.com/tidwall/sjson"
+)
+
+// ResponseModelCallsField is the usage member in which an upstream, such as the
+// MoM fusion gateway, reports the other billed model calls behind its response.
+const ResponseModelCallsField = "model_calls"
 
 // ResponseModel records upstream declarations before response conversion. It is
 // diagnostic only: it must never change routing, pricing, or downstream output.
@@ -15,10 +27,67 @@ type ResponseModel struct {
 // ResponseModelBilling records how a response model billing rule settled a
 // request. BillingModel is the billing name whose expression priced it; it is
 // empty when the request kept the entry model's price, and Fallback says why.
+// Calls prices the other model calls the response reported, in their order.
 type ResponseModelBilling struct {
-	ResponseModel string `json:"response_model,omitempty"`
-	BillingModel  string `json:"billing_model,omitempty"`
-	Fallback      string `json:"fallback,omitempty"`
+	ResponseModel string                     `json:"response_model,omitempty"`
+	BillingModel  string                     `json:"billing_model,omitempty"`
+	Fallback      string                     `json:"fallback,omitempty"`
+	Calls         []ResponseModelCallBilling `json:"calls,omitempty"`
+}
+
+// ResponseModelCall is a billed model call behind a response other than the one
+// that answered, such as a fusion advisor, under the model that served it. Its
+// usage has Chat Completions semantics: prompt tokens include cache hits and
+// writes.
+type ResponseModelCall struct {
+	Role  string `json:"role"`
+	Model string `json:"model"`
+	dto.Usage
+}
+
+// ResponseModelCallBilling records how one reported call was priced, like
+// ResponseModelBilling does for the response itself. Quota is the call's share
+// after the fee and group ratio, for display; settlement adds QuotaBeforeGroup
+// and rounds the response's total once.
+type ResponseModelCallBilling struct {
+	Role             string  `json:"role,omitempty"`
+	ResponseModel    string  `json:"response_model,omitempty"`
+	BillingModel     string  `json:"billing_model,omitempty"`
+	Fallback         string  `json:"fallback,omitempty"`
+	PromptTokens     int     `json:"prompt_tokens"`
+	CompletionTokens int     `json:"completion_tokens"`
+	CacheTokens      int     `json:"cache_tokens,omitempty"`
+	Quota            int     `json:"quota"`
+	QuotaBeforeGroup float64 `json:"-"`
+}
+
+// TakeResponseModelCalls records the model calls a response body or stream
+// event reports under its usage, or under response.usage for a Responses
+// event, and returns the payload without them: they are pricing input for a
+// response model billing rule, not part of the response a client receives. It
+// returns the payload unchanged and false when it reports none.
+func (info *RelayInfo) TakeResponseModelCalls(payload []byte) ([]byte, bool) {
+	if !bytes.Contains(payload, []byte(`"`+ResponseModelCallsField+`"`)) {
+		return payload, false
+	}
+	for _, path := range []string{"usage." + ResponseModelCallsField, "response.usage." + ResponseModelCallsField} {
+		reported := gjson.GetBytes(payload, path)
+		if !reported.Exists() {
+			continue
+		}
+		var calls []ResponseModelCall
+		if err := common.UnmarshalJsonStr(reported.Raw, &calls); err != nil {
+			common.SysError(common.LogText("ignoring unreadable response model calls: %s", err.Error()))
+		} else {
+			info.ResponseModelCalls = calls
+		}
+		stripped, err := sjson.DeleteBytes(payload, path)
+		if err != nil {
+			return payload, false
+		}
+		return stripped, true
+	}
+	return payload, false
 }
 
 // matches reports whether an upstream declaration is compatible with the

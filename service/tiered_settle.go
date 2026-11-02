@@ -242,11 +242,13 @@ func PrepareTieredBillingForSelectedGroup(c *gin.Context, relayInfo *relaycommon
 
 // ApplyResponseModelBilling switches the frozen expression to the price of the
 // model the upstream declared, when the billing model's response model billing
-// rule lists it. Call it once, before token normalization, because the
-// replacement expression decides which token categories are priced apart.
-// Group ratio, request input and the fee stay frozen. A response that declares
-// no model or an unlisted one keeps the entry price, which should be the most
-// expensive model it can route to, and leaves an admin-visible fallback.
+// rule lists it, and prices the other model calls the upstream reported behind
+// the response, each at its own declared model. Call it once, before token
+// normalization, because the replacement expression decides which token
+// categories are priced apart. Group ratio, request input and the fee stay
+// frozen and apply to every call. A response or call that declares no model or
+// an unlisted one keeps the entry price, which should be the most expensive
+// model it can route to, and leaves an admin-visible fallback.
 func ApplyResponseModelBilling(ctx context.Context, relayInfo *relaycommon.RelayInfo) {
 	snap := relayInfo.TieredBillingSnapshot
 	if snap == nil || snap.BillingMode != billing_setting.BillingModeTieredExpr || snap.TaskUsageBilling {
@@ -254,45 +256,81 @@ func ApplyResponseModelBilling(ctx context.Context, relayInfo *relaycommon.Relay
 	}
 	rule, ok := billing_setting.GetResponseModelBillingRule(snap.ModelName)
 	if !ok || len(rule.Models) == 0 {
+		if len(relayInfo.ResponseModelCalls) > 0 {
+			logger.LogWarn(ctx, common.LogText("%s has no response model billing rule, so the %d model calls its response reported were not charged",
+				snap.ModelName, len(relayInfo.ResponseModelCalls)))
+		}
 		return
 	}
 
 	declared := relayInfo.BillingResponseModel
-	decision := &relaycommon.ResponseModelBilling{ResponseModel: declared}
+	settled, billingModel, fallback := responseModelSnapshot(snap, rule, declared)
+	decision := &relaycommon.ResponseModelBilling{ResponseModel: declared, BillingModel: billingModel, Fallback: fallback}
 	relayInfo.ResponseModelBilling = decision
+	relayInfo.TieredBillingSnapshot = settled
+	if fallback != "" {
+		logger.LogWarn(ctx, common.LogText("response model billing kept the entry price of %s: %s, response model %q",
+			snap.ModelName, fallback, declared))
+	}
+
+	requestInput := tieredRequestInput(relayInfo, snap)
+	for _, call := range relayInfo.ResponseModelCalls {
+		callSnap, callBillingModel, callFallback := responseModelSnapshot(snap, rule, call.Model)
+		billing := relaycommon.ResponseModelCallBilling{
+			Role:             call.Role,
+			ResponseModel:    call.Model,
+			BillingModel:     callBillingModel,
+			Fallback:         callFallback,
+			PromptTokens:     call.PromptTokens,
+			CompletionTokens: call.CompletionTokens,
+			CacheTokens:      call.PromptTokensDetails.CachedTokens,
+		}
+		if callFallback != "" {
+			logger.LogWarn(ctx, common.LogText("response model billing kept the entry price of %s for a %s call: %s, response model %q",
+				snap.ModelName, call.Role, callFallback, call.Model))
+		}
+		params := BuildTieredTokenParams(&call.Usage, false, billingexpr.UsedVarsByHash(callSnap.ExprString, callSnap.ExprHash))
+		result, err := billingexpr.ComputeTieredQuotaWithRequest(callSnap, params, requestInput)
+		// A call can only add to the charge; one that cannot be priced adds
+		// nothing rather than a credit.
+		if err != nil || !(result.ActualQuotaBeforeGroup >= 0) {
+			billing.Fallback = "evaluation_failed"
+			logger.LogError(ctx, common.LogText("response model billing could not price a %s call to %q for %s: %v, quota %v",
+				call.Role, call.Model, snap.ModelName, err, result.ActualQuotaBeforeGroup))
+		} else {
+			billing.QuotaBeforeGroup = result.ActualQuotaBeforeGroup
+			billing.Quota = result.ActualQuotaAfterGroup
+		}
+		decision.Calls = append(decision.Calls, billing)
+	}
+}
+
+// responseModelSnapshot returns the entry snapshot repriced at the billing name
+// rule lists for a declared model, with that name. When the model is missing,
+// unlisted or its billing name has no token expression, it returns the entry
+// snapshot itself and the fallback reason.
+func responseModelSnapshot(entry *billingexpr.BillingSnapshot, rule billing_setting.ResponseModelBillingRule, declared string) (*billingexpr.BillingSnapshot, string, string) {
 	billingModel, listed := rule.Models[declared]
 	expression, priced := billing_setting.TokenBillingExpr(billingModel)
 	switch {
 	case declared == "":
-		decision.Fallback = "no_response_model"
+		return entry, "", "no_response_model"
 	case !listed:
-		decision.Fallback = "unlisted_response_model"
+		return entry, "", "unlisted_response_model"
 	case !priced:
-		decision.Fallback = "unpriced_billing_model"
-	default:
-		settled := *snap
-		settled.ModelName = billingModel
-		settled.ExprString = expression
-		settled.ExprHash = billingexpr.ExprHashString(expression)
-		settled.ExprVersion = billingexpr.ExprVersion(expression)
-		relayInfo.TieredBillingSnapshot = &settled
-		decision.BillingModel = billingModel
-		return
+		return entry, "", "unpriced_billing_model"
 	}
-	logger.LogWarn(ctx, common.LogText("response model billing kept the entry price of %s: %s, response model %q",
-		snap.ModelName, decision.Fallback, declared))
+	settled := *entry
+	settled.ModelName = billingModel
+	settled.ExprString = expression
+	settled.ExprHash = billingexpr.ExprHashString(expression)
+	settled.ExprVersion = billingexpr.ExprVersion(expression)
+	return &settled, billingModel, ""
 }
 
-// TryTieredSettle checks if the request uses tiered_expr billing and, if so,
-// computes the actual quota using the captured BillingSnapshot. Returns:
-//   - ok=true, quota, result  when tiered billing applies
-//   - ok=false, 0, nil        when it doesn't (caller should fall through to existing logic)
-func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenParams) (ok bool, quota int, result *billingexpr.TieredResult) {
-	snap := relayInfo.TieredBillingSnapshot
-	if snap == nil || snap.BillingMode != "tiered_expr" {
-		return false, 0, nil
-	}
-
+// tieredRequestInput is the request context an expression settles against: the
+// frozen request, with the image count settled or reserved for it.
+func tieredRequestInput(relayInfo *relaycommon.RelayInfo, snap *billingexpr.BillingSnapshot) billingexpr.RequestInput {
 	requestInput := billingexpr.RequestInput{}
 	if relayInfo.BillingRequestInput != nil {
 		requestInput = *relayInfo.BillingRequestInput
@@ -302,14 +340,33 @@ func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenP
 	} else if snap.EstimatedImageCount != nil {
 		requestInput.ImageCount = snap.EstimatedImageCount
 	}
+	return requestInput
+}
 
-	tr, err := billingexpr.ComputeTieredQuotaWithRequest(snap, params, requestInput)
+// TryTieredSettle checks if the request uses tiered_expr billing and, if so,
+// computes the actual quota using the captured BillingSnapshot. The model calls
+// ApplyResponseModelBilling priced are part of the response's charge. Returns:
+//   - ok=true, quota, result  when tiered billing applies
+//   - ok=false, 0, nil        when it doesn't (caller should fall through to existing logic)
+func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenParams) (ok bool, quota int, result *billingexpr.TieredResult) {
+	snap := relayInfo.TieredBillingSnapshot
+	if snap == nil || snap.BillingMode != "tiered_expr" {
+		return false, 0, nil
+	}
+
+	tr, err := billingexpr.ComputeTieredQuotaWithRequest(snap, params, tieredRequestInput(relayInfo, snap))
 	if err != nil {
 		quota = relayInfo.FinalPreConsumedQuota
 		if quota <= 0 {
 			quota = snap.EstimatedQuotaAfterGroup
 		}
 		return true, quota, nil
+	}
+	if decision := relayInfo.ResponseModelBilling; decision != nil && len(decision.Calls) > 0 {
+		for _, call := range decision.Calls {
+			tr.ActualQuotaBeforeGroup += call.QuotaBeforeGroup
+		}
+		tr.ActualQuotaAfterGroup, tr.Clamp = common.QuotaRoundChecked(tr.ActualQuotaBeforeGroup * snap.GroupRatio)
 	}
 
 	// Surface any single-request saturation from settlement onto RelayInfo so the

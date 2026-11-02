@@ -259,6 +259,10 @@ func StreamScannerHandler(c *gin.Context, resp *http.Response, info *relaycommon
 		}()
 		for data := range dataChan {
 			sr.reset()
+			// Reported model calls are pricing input; no handler forwards them.
+			if stripped, ok := info.TakeResponseModelCalls(common.StringToByteSlice(data)); ok {
+				data = string(stripped)
+			}
 			func() {
 				writeMutex.Lock()
 				defer writeMutex.Unlock()

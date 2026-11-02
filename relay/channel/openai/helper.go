@@ -15,6 +15,7 @@ import (
 	"github.com/QuantumNous/new-api/service"
 
 	"github.com/samber/lo"
+	"github.com/tidwall/gjson"
 
 	"github.com/gin-gonic/gin"
 )
@@ -152,6 +153,10 @@ func processTokenData(info *relaycommon.RelayInfo, data string, responseTextBuil
 			return err
 		}
 		processCompletionsStreamResponse(streamResponse, responseTextBuilder)
+	default:
+		// Claude and Gemini requests served by a Chat Completions upstream
+		// stream the same chunks in their own relay mode.
+		info.ObserveResponseModel(gjson.Get(data, "model").String())
 	}
 	return nil
 }

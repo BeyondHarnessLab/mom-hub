@@ -413,6 +413,7 @@ func PostTextConsumeQuota(ctx *gin.Context, relayInfo *relaycommon.RelayInfo, us
 	var tieredResult *billingexpr.TieredResult
 	var tieredTokens billingexpr.TokenParams
 	tieredBillingApplied := false
+	ApplyResponseModelBilling(ctx, relayInfo)
 	snap := relayInfo.TieredBillingSnapshot
 	// Providers normally estimate missing usage before settlement. Preserve the
 	// same prompt estimate when a fixed-price expression reaches us without it;

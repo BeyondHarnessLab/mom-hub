@@ -64,7 +64,11 @@ function makeLog(other: LogOtherData): UsageLog {
   }
 }
 
-function renderDetails(other: LogOtherData, promptTokens = 0): QueryClient {
+function renderDetails(
+  other: LogOtherData,
+  promptTokens = 0,
+  isAdmin = false
+): QueryClient {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -80,7 +84,7 @@ function renderDetails(other: LogOtherData, promptTokens = 0): QueryClient {
     <QueryClientProvider client={queryClient}>
       <DetailsDialog
         log={{ ...makeLog(other), prompt_tokens: promptTokens }}
-        isAdmin={false}
+        isAdmin={isAdmin}
         isRoot={false}
         open
         onOpenChange={() => undefined}
@@ -150,6 +154,45 @@ test('keeps one cache write row and no cache prices for OpenAI logs without 12-h
   expect(screen.queryByText('Cache Creation (30m)')).toBeNull()
   expect(screen.queryByText('Cache Creation')).toBeNull()
   queryClient.clear()
+})
+
+describe('response model billing details', () => {
+  const settled: LogOtherData = {
+    billing_mode: 'tiered_expr',
+    expr_b64: btoa('tier("cheap", p * 1 + c * 5)'),
+    matched_tier: 'cheap',
+    group_ratio: 1,
+    settle_model: 'vendor/cheap',
+    fee_rate: 0.05,
+  }
+
+  test('shows the model that settled the request and the added fee', () => {
+    const queryClient = renderDetails(settled, 1000)
+    expect(rowValue('Settled Model')).toBe('vendor/cheap')
+    expect(rowValue('Fee Rate')).toBe('+5%')
+    expect(screen.queryByText('Kept entry price')).toBeNull()
+    queryClient.clear()
+  })
+
+  test('shows admins why a request kept the entry price', () => {
+    const queryClient = renderDetails(
+      {
+        ...settled,
+        settle_model: undefined,
+        admin_info: {
+          response_model_billing: {
+            response_model: 'vendor/other',
+            fallback: 'unlisted_response_model',
+          },
+        },
+      },
+      1000,
+      true
+    )
+    expect(screen.queryByText('Settled Model')).toBeNull()
+    expect(rowValue('Kept entry price')).toBe('Response model not listed')
+    queryClient.clear()
+  })
 })
 
 describe('usage facts billing details', () => {

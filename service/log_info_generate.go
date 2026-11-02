@@ -341,6 +341,17 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 	}
 	other.SetPublic("billing_mode", "tiered_expr")
 	other.SetPublic("expr_b64", base64.StdEncoding.EncodeToString([]byte(snap.ExprString)))
+	if snap.FeeRate > 0 {
+		other.SetPublic("fee_rate", snap.FeeRate)
+	}
+	if decision := relayInfo.ResponseModelBilling; decision != nil {
+		// The response already shows the declared model to the caller; the
+		// billing name and fallback reason are pricing configuration.
+		if decision.BillingModel != "" {
+			other.SetPublic("settle_model", decision.ResponseModel)
+		}
+		other.SetAdmin("response_model_billing", *decision)
+	}
 	if result != nil {
 		if tokens := result.BillingTokens; tokens != nil && result.BillingUnit == billingexpr.BillingUnitToken {
 			other.SetPublic("image_cache_tokens", tokens.ImgCR)

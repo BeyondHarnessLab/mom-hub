@@ -109,3 +109,43 @@ func TestSmokeTestExprRejectsTaskUsageWithoutSchema(t *testing.T) {
 
 	require.NoError(t, SmokeTestExpr(`tier("base", p * 2 + c * 8)`))
 }
+
+func TestValidateResponseModelBilling(t *testing.T) {
+	saved := billingSetting
+	t.Cleanup(func() { billingSetting = saved })
+	billingSetting = BillingSetting{
+		BillingMode: map[string]string{"router/auto": BillingModeTieredExpr, "auto/cheap": BillingModeTieredExpr, "auto/task": BillingModeTieredExpr},
+		BillingExpr: map[string]string{
+			"router/auto": `tier("entry", p * 10 + c * 50)`,
+			"auto/cheap":  `tier("cheap", p + c * 5)`,
+			"auto/task":   `tier("task", u("seconds") * 0.4)`,
+		},
+	}
+
+	tests := []struct {
+		name          string
+		value         string
+		expectedError string
+	}{
+		{name: "response models with a fee", value: `{"router/auto":{"fee_rate":0.05,"models":{"vendor/cheap":"auto/cheap"}}}`},
+		{name: "fee only", value: `{"router/auto":{"fee_rate":0.05}}`},
+		{name: "fee written as a percentage", value: `{"router/auto":{"fee_rate":5}}`, expectedError: "fee_rate must be between 0 and 1"},
+		{name: "negative fee", value: `{"router/auto":{"fee_rate":-0.05}}`, expectedError: "fee_rate must be between 0 and 1"},
+		{name: "misspelled field", value: `{"router/auto":{"fee":0.05}}`, expectedError: `unknown field "fee"`},
+		{name: "entry model without an expression price", value: `{"vendor/cheap":{"fee_rate":0.05}}`, expectedError: "the entry model must have an expression price"},
+		{name: "billing model without a price", value: `{"router/auto":{"models":{"vendor/x":"auto/missing"}}}`, expectedError: `billing model "auto/missing"`},
+		{name: "billing model priced by task usage", value: `{"router/auto":{"models":{"vendor/x":"auto/task"}}}`, expectedError: `billing model "auto/task"`},
+		{name: "not an object", value: `null`, expectedError: "must be a JSON object"},
+	}
+
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			err := ValidateResponseModelBilling(testCase.value)
+			if testCase.expectedError == "" {
+				require.NoError(t, err)
+				return
+			}
+			require.ErrorContains(t, err, testCase.expectedError)
+		})
+	}
+}

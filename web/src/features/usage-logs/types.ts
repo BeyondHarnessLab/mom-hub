@@ -114,6 +114,11 @@ export interface ToolSurchargeItem {
   price: number
 }
 
+export type ResponseModelBillingFallback =
+  | 'no_response_model'
+  | 'unlisted_response_model'
+  | 'unpriced_billing_model'
+
 export interface LogOtherData {
   admin_info?: {
     request_policy?: PolicyEvent[]
@@ -147,6 +152,13 @@ export interface LogOtherData {
     // Reject / intercept reason (admin only)
     reject_reason?: string
     task_plugin?: TaskPluginInfo
+    // How a response model billing rule settled the request. billing_model is
+    // empty when the request kept the entry price, and fallback says why.
+    response_model_billing?: {
+      response_model?: string
+      billing_model?: string
+      fallback?: ResponseModelBillingFallback | string
+    }
   }
   root_info?: {
     task_plugin?: TaskPluginRuntimeInfo
@@ -227,6 +239,10 @@ export interface LogOtherData {
   matched_tier?: string
   request_rules?: RequestRuleTrace[]
   usage_facts?: Record<string, string | number>
+  // Response model billing: the declared model whose price settled the request,
+  // and the fee added to the expression price (0.05 is 5%).
+  settle_model?: string
+  fee_rate?: number
   reasoning_effort?: string
   image?: boolean
   image_ratio?: number

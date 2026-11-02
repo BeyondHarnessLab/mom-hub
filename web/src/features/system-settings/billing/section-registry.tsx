@@ -111,7 +111,16 @@ const BILLING_SECTIONS = [
         modelDefaults={getModelDefaults(settings)}
         groupDefaults={getGroupDefaults(settings)}
         toolPricesDefault={settings['tool_price_setting.prices']}
-        visibleTabs={['models', 'unset-models', 'tool-prices', 'upstream-sync']}
+        responseModelBillingDefault={
+          settings['billing_setting.response_model_billing']
+        }
+        visibleTabs={[
+          'models',
+          'unset-models',
+          'tool-prices',
+          'response-model-billing',
+          'upstream-sync',
+        ]}
       />
     ),
   },

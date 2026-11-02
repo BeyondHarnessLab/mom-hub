@@ -164,9 +164,11 @@ func TestResponseModelRetryResetsObservation(t *testing.T) {
 	info := &relaycommon.RelayInfo{OriginModelName: "requested"}
 	info.InitChannelMeta(c)
 	info.ObserveResponseModel("other")
+	info.ResponseModelCalls = []relaycommon.ResponseModelCall{{Role: "advisor", Model: "other"}}
 	require.True(t, info.ResponseModel.Mismatch())
 	info.InitChannelMeta(c)
 	assert.Nil(t, info.ResponseModel)
+	assert.Nil(t, info.ResponseModelCalls)
 	info.ObserveResponseModel("requested")
 	assert.False(t, info.ResponseModel.Mismatch())
 }
@@ -294,6 +296,72 @@ func TestResponseModelChatStreamForConvertedClients(t *testing.T) {
 			assert.Equal(t, "returned", info.BillingResponseModel)
 			require.NotNil(t, info.ResponseModel)
 			assert.Equal(t, "returned", info.ResponseModel.ReturnedModel)
+		})
+	}
+}
+
+// A fusion upstream reports its other billed model calls beside the usage.
+// They are recorded for billing in every handler that can face it and never
+// reach the client, whatever format the client speaks.
+func TestResponseModelCallsAreRecordedAndNotForwarded(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	previousTimeout := constant.StreamingTimeout
+	constant.StreamingTimeout = 30
+	t.Cleanup(func() { constant.StreamingTimeout = previousTimeout })
+	calls := `"model_calls":[{"role":"advisor","model":"vendor/advisor","prompt_tokens":7,"completion_tokens":2,"total_tokens":9,` +
+		`"prompt_tokens_details":{"cached_tokens":4,"cache_write_tokens":0},"completion_tokens_details":{"reasoning_tokens":1}}]`
+	chat := `{"id":"chat_1","model":"returned","choices":[{"index":0,"message":{"role":"assistant","content":"hello"},"finish_reason":"stop"}],"usage":{` + calls + `,"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}`
+	chatStream := "data: " + `{"id":"chat_1","model":"returned","choices":[{"index":0,"delta":{"role":"assistant","content":"hello"}}]}` + "\n\ndata: " + `{"id":"chat_1","choices":[],"usage":{` + calls + `,"prompt_tokens":2,"completion_tokens":3,"total_tokens":5}}` + "\n\ndata: [DONE]\n\n"
+	responses := `{"id":"resp_1","model":"returned","status":"completed","output":[{"type":"message","role":"assistant","content":[{"type":"output_text","text":"hello"}]}],"usage":{` + calls + `,"input_tokens":2,"output_tokens":3,"total_tokens":5}}`
+	responsesStream := "data: " + `{"type":"response.created","response":{"id":"resp_1","model":"returned","usage":null}}` + "\n\ndata: " + `{"type":"response.completed","response":{"id":"resp_1","status":"completed","output":[],"usage":{` + calls + `,"input_tokens":2,"output_tokens":3,"total_tokens":5}}}` + "\n\n"
+	claudeBody := `{"id":"msg_1","type":"message","model":"returned","role":"assistant","content":[{"type":"text","text":"hello"}],"stop_reason":"end_turn","usage":{` + calls + `,"input_tokens":2,"output_tokens":3}}`
+	claudeStream := "data: " + `{"type":"message_start","message":{"id":"msg_1","type":"message","model":"returned","role":"assistant","content":[],"usage":{"input_tokens":2,"output_tokens":0}}}` + "\n\ndata: " + `{"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{` + calls + `,"output_tokens":3}}` + "\n\ndata: " + `{"type":"message_stop"}` + "\n\n"
+	for _, tc := range []struct {
+		name    string
+		body    string
+		format  types.RelayFormat
+		stream  bool
+		handler func(*gin.Context, *relaycommon.RelayInfo, *http.Response) (*dto.Usage, *types.NewAPIError)
+	}{
+		{"chat", chat, types.RelayFormatOpenAI, false, openai.OpenaiHandler},
+		{"chat stream", chatStream, types.RelayFormatOpenAI, true, openai.OaiStreamHandler},
+		{"claude client over chat stream", chatStream, types.RelayFormatClaude, true, openai.OaiStreamHandler},
+		{"responses", responses, types.RelayFormatOpenAIResponses, false, openai.OaiResponsesHandler},
+		{"responses stream", responsesStream, types.RelayFormatOpenAIResponses, true, openai.OaiResponsesStreamHandler},
+		{"chat to responses", chat, types.RelayFormatOpenAIResponses, false, openai.OaiChatToResponsesHandler},
+		{"responses to chat", responses, types.RelayFormatOpenAI, false, openai.OaiResponsesToChatHandler},
+		{"claude", claudeBody, types.RelayFormatClaude, false, func(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+			return claude.ClaudeHandler(c, resp, info)
+		}},
+		{"claude stream", claudeStream, types.RelayFormatClaude, true, func(c *gin.Context, info *relaycommon.RelayInfo, resp *http.Response) (*dto.Usage, *types.NewAPIError) {
+			return claude.ClaudeStreamHandler(c, resp, info)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			recorder := httptest.NewRecorder()
+			c, _ := gin.CreateTestContext(recorder)
+			c.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+			info := &relaycommon.RelayInfo{
+				OriginModelName: "requested", RelayFormat: tc.format, RelayMode: relayconstant.RelayModeChatCompletions,
+				IsStream: tc.stream, DisablePing: true, StartTime: time.Now(), ShouldIncludeUsage: true,
+				ChannelMeta:         &relaycommon.ChannelMeta{UpstreamModelName: "mapped"},
+				ThinkingContentInfo: relaycommon.ThinkingContentInfo{IsFirstThinkingContent: true},
+			}
+			usage, apiErr := tc.handler(c, info, &http.Response{StatusCode: http.StatusOK, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(tc.body))})
+			require.Nil(t, apiErr)
+			require.NotNil(t, usage)
+			assert.Equal(t, 5, usage.TotalTokens)
+			require.Len(t, info.ResponseModelCalls, 1)
+			call := info.ResponseModelCalls[0]
+			assert.Equal(t, "advisor", call.Role)
+			assert.Equal(t, "vendor/advisor", call.Model)
+			assert.Equal(t, 7, call.PromptTokens)
+			assert.Equal(t, 2, call.CompletionTokens)
+			assert.Equal(t, 4, call.PromptTokensDetails.CachedTokens)
+			assert.Equal(t, 1, call.CompletionTokenDetails.ReasoningTokens)
+			assert.NotEmpty(t, recorder.Body.String())
+			assert.NotContains(t, recorder.Body.String(), "model_calls")
+			assert.NotContains(t, recorder.Body.String(), "vendor/advisor")
 		})
 	}
 }

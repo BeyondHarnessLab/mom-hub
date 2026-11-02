@@ -298,6 +298,72 @@ func TestResponseModelBillingSettlesAtDeclaredModelPricePlusFee(t *testing.T) {
 	}
 }
 
+func TestResponseModelBillingPricesReportedModelCalls(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	saved := map[string]string{}
+	require.NoError(t, config.GlobalConfig.SaveToDB(func(key, value string) error {
+		saved[key] = value
+		return nil
+	}))
+	t.Cleanup(func() {
+		require.NoError(t, config.GlobalConfig.LoadFromDB(saved))
+	})
+
+	require.NoError(t, config.GlobalConfig.LoadFromDB(map[string]string{
+		"billing_setting.billing_mode":           `{"router/fusion":"tiered_expr","fusion/cheap":"tiered_expr","fusion/mid":"tiered_expr"}`,
+		"billing_setting.billing_expr":           `{"router/fusion":"tier(\"entry\", p * 10 + c * 50)","fusion/cheap":"tier(\"cheap\", p * 1 + c * 5 + cr * 0.1)","fusion/mid":"tier(\"mid\", p * 2 + c * 10)"}`,
+		"billing_setting.response_model_billing": `{"router/fusion":{"fee_rate":0.05,"models":{"vendor/cheap":"fusion/cheap","vendor/mid":"fusion/mid"}}}`,
+		"group_ratio_setting.group_ratio":        `{"default":2}`,
+		"quota_setting.pre_consume_multiplier":   "1",
+	}))
+
+	ctx, _ := gin.CreateTestContext(httptest.NewRecorder())
+	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
+	ctx.Set("group", "default")
+	info := &relaycommon.RelayInfo{
+		OriginModelName:     "router/fusion",
+		UserGroup:           "default",
+		UsingGroup:          "default",
+		BillingRequestInput: &billingexpr.RequestInput{Body: []byte(`{}`)},
+	}
+	_, err := ModelPriceHelper(ctx, info, 1000, &types.TokenCountMeta{})
+	require.NoError(t, err)
+
+	// Quota before the group ratio, at 500K quota per USD, raised by the 5% fee:
+	//   response vendor/cheap  1000 in, 200 out:          (1000*1 + 200*5) / 2 * 1.05 = 1050
+	//   advisor  vendor/mid    2000 in, 400 out:          (2000*2 + 400*10) / 2 * 1.05 = 4200
+	//   advisor  vendor/cheap  1000 in (600 cached), 100: (400*1 + 100*5 + 600*0.1) / 2 * 1.05 = 504
+	//   advisor  vendor/other  unlisted, entry price:     (100*10 + 10*50) / 2 * 1.05 = 787.5
+	// The total is doubled by the group ratio and rounded once: 6541.5 * 2 = 13083.
+	info.ObserveResponseModel("vendor/cheap")
+	info.ResponseModelCalls = []relaycommon.ResponseModelCall{
+		{Role: "advisor", Model: "vendor/mid", Usage: dto.Usage{PromptTokens: 2000, CompletionTokens: 400}},
+		{Role: "advisor", Model: "vendor/cheap", Usage: dto.Usage{PromptTokens: 1000, CompletionTokens: 100, PromptTokensDetails: dto.InputTokenDetails{CachedTokens: 600}}},
+		{Role: "advisor", Model: "vendor/other", Usage: dto.Usage{PromptTokens: 100, CompletionTokens: 10}},
+	}
+	service.ApplyResponseModelBilling(ctx, info)
+	ok, quota, result := service.TryTieredSettle(info, billingexpr.TokenParams{P: 1000, C: 200, Len: 1000})
+	require.True(t, ok)
+	require.NotNil(t, result)
+	assert.Equal(t, 13083, quota)
+	assert.InDelta(t, 6541.5, result.ActualQuotaBeforeGroup, 1e-9)
+
+	require.NotNil(t, info.ResponseModelBilling)
+	assert.Equal(t, "fusion/cheap", info.ResponseModelBilling.BillingModel)
+	assert.Equal(t, []relaycommon.ResponseModelCallBilling{
+		{Role: "advisor", ResponseModel: "vendor/mid", BillingModel: "fusion/mid", PromptTokens: 2000, CompletionTokens: 400, Quota: 8400, QuotaBeforeGroup: 4200},
+		{Role: "advisor", ResponseModel: "vendor/cheap", BillingModel: "fusion/cheap", PromptTokens: 1000, CompletionTokens: 100, CacheTokens: 600, Quota: 1008, QuotaBeforeGroup: 504},
+		{Role: "advisor", ResponseModel: "vendor/other", Fallback: "unlisted_response_model", PromptTokens: 100, CompletionTokens: 10, Quota: 1575, QuotaBeforeGroup: 787.5},
+	}, info.ResponseModelBilling.Calls)
+
+	other := model.NewLogOther()
+	service.InjectTieredBillingInfo(other, info, result)
+	logged := other.Snapshot()
+	assert.Equal(t, "vendor/cheap", logged["settle_model"])
+	assert.Equal(t, *info.ResponseModelBilling, logged["admin_info"].(map[string]any)["response_model_billing"])
+}
+
 func TestModelPriceHelperRequestBillingRatiosOnlyApplyToFixedPrice(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	savedModelPrices := ratio_setting.ModelPrice2JSONString()

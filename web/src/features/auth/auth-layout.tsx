@@ -21,6 +21,7 @@ import { useTranslation } from 'react-i18next'
 
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSystemConfig } from '@/hooks/use-system-config'
+import { cn } from '@/lib/utils'
 
 type AuthLayoutProps = {
   children: React.ReactNode
@@ -31,33 +32,50 @@ export function AuthLayout({ children }: AuthLayoutProps) {
   const { systemName, logo, loading } = useSystemConfig()
 
   return (
-    <div className='relative grid h-svh max-w-none'>
-      <Link
-        to='/'
-        className='absolute top-4 left-4 z-10 flex items-center gap-2 transition-opacity hover:opacity-80 sm:top-8 sm:left-8'
-      >
-        <div className='relative h-8 w-8'>
+    <div className='bg-background relative flex min-h-svh flex-col overflow-hidden'>
+      <div
+        aria-hidden
+        className='bg-grid pointer-events-none absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black,transparent_70%)]'
+      />
+      <header className='relative z-10 flex h-16 items-center px-4 sm:px-8'>
+        <Link
+          to='/'
+          className='flex items-center gap-2.5 transition-opacity hover:opacity-80'
+        >
+          <div className='relative size-[30px]'>
+            {loading ? (
+              <Skeleton className='absolute inset-0 rounded-[7px]' />
+            ) : (
+              <img
+                src={logo}
+                alt={t('Logo')}
+                className='size-[30px] rounded-[7px] object-contain'
+              />
+            )}
+          </div>
           {loading ? (
-            <Skeleton className='absolute inset-0 rounded-full' />
+            <Skeleton className='h-5 w-24' />
           ) : (
-            <img
-              src={logo}
-              alt={t('Logo')}
-              className='h-8 w-8 rounded-full object-cover'
-            />
+            <span className='text-[17px] font-semibold tracking-[-0.02em]'>
+              {systemName}
+            </span>
           )}
+        </Link>
+      </header>
+      <main className='relative z-10 flex flex-1 items-center justify-center px-4 pt-4 pb-16'>
+        <div
+          className={cn(
+            'bg-card w-full max-w-[440px] rounded-[18px] border p-6 sm:p-9',
+            'shadow-[0_1px_2px_rgb(20_23_28/0.04),0_12px_32px_-16px_rgb(20_23_28/0.18)]',
+            'dark:shadow-none',
+            '[&_input[data-slot=form-control]]:h-10 [&_form_button[type=submit]]:h-10 [&_form_button[type=submit]]:font-semibold'
+          )}
+        >
+          <div className='flex flex-col justify-center space-y-2'>
+            {children}
+          </div>
         </div>
-        {loading ? (
-          <Skeleton className='h-6 w-24' />
-        ) : (
-          <h1 className='text-xl font-medium'>{systemName}</h1>
-        )}
-      </Link>
-      <div className='container flex items-center pt-16 sm:pt-0'>
-        <div className='mx-auto flex w-full flex-col justify-center space-y-2 px-4 py-8 sm:w-[480px] sm:p-8'>
-          {children}
-        </div>
-      </div>
+      </main>
     </div>
   )
 }

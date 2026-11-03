@@ -26,6 +26,7 @@ import {
   IconTelegram,
   IconWeChat,
 } from '@/assets/brand-icons'
+import { OAuthProviderIcon } from '@/components/oauth-provider-icon'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -138,6 +139,7 @@ export function OAuthProviders({
         key: `custom-${provider.slug}`,
         label: t('Continue with {{name}}', { name: provider.name }),
         onClick: () => handleCustomOAuthLogin(provider),
+        icon: <OAuthProviderIcon icon={provider.icon} />,
       })
     }
   }

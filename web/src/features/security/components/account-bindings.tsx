@@ -28,6 +28,7 @@ import {
   IconDiscord,
 } from '@/assets/brand-icons'
 import { ConfirmDialog } from '@/components/confirm-dialog'
+import { OAuthProviderIcon } from '@/components/oauth-provider-icon'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { createOAuthAuthorization } from '@/features/auth/api'
@@ -383,7 +384,10 @@ export function AccountBindings({ profile, onUpdate }: AccountBindingsProps) {
             >
               <div className='flex min-w-0 items-center gap-2'>
                 <div className='bg-muted shrink-0 rounded-md p-1.5'>
-                  <Link2 className='h-4 w-4' />
+                  <OAuthProviderIcon
+                    icon={provider.icon}
+                    fallback={<Link2 className='h-4 w-4' />}
+                  />
                 </div>
                 <div className='min-w-0'>
                   <div className='flex items-center gap-1.5'>

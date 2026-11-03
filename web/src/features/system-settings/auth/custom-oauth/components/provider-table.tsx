@@ -24,6 +24,7 @@ import { ConfirmDialog } from '@/components/confirm-dialog'
 import { BadgeCell } from '@/components/data-table/core/badge-cell'
 import { StaticDataTable } from '@/components/data-table/static/static-data-table'
 import { StaticRowActions } from '@/components/data-table/static/static-row-actions'
+import { OAuthProviderIcon } from '@/components/oauth-provider-icon'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 
@@ -70,12 +71,15 @@ export function ProviderTable(props: ProviderTableProps) {
           {
             id: 'icon',
             header: t('Icon'),
-            cell: (provider) =>
-              provider.icon ? (
-                <span className='text-lg'>{provider.icon}</span>
-              ) : (
-                <span className='text-muted-foreground text-sm'>--</span>
-              ),
+            cell: (provider) => (
+              <OAuthProviderIcon
+                icon={provider.icon}
+                size={20}
+                fallback={
+                  <span className='text-muted-foreground text-sm'>--</span>
+                }
+              />
+            ),
           },
           {
             id: 'name',

@@ -35,6 +35,7 @@ import { toast } from 'sonner'
 import { IconGithub, IconDiscord } from '@/assets/brand-icons'
 import { ConfirmDialog } from '@/components/confirm-dialog'
 import { Dialog } from '@/components/dialog'
+import { OAuthProviderIcon } from '@/components/oauth-provider-icon'
 import { StatusBadge } from '@/components/status-badge'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -150,20 +151,6 @@ const BUILTIN_BINDINGS: ReadonlyArray<{
   },
 ]
 
-function CustomProviderIcon(props: { iconUrl?: string }) {
-  if (!props.iconUrl) return <Link2 className='h-4 w-4' />
-  return (
-    <img
-      src={props.iconUrl}
-      alt=''
-      className='h-4 w-4 rounded-sm object-contain'
-      onError={(e) => {
-        e.currentTarget.style.display = 'none'
-      }}
-    />
-  )
-}
-
 export function UserBindingDialog(props: Props) {
   const { t } = useTranslation()
   const { requestVerification, verificationActive } = useUsers()
@@ -247,7 +234,12 @@ export function UserBindingDialog(props: Props) {
       items.push({
         key: `oauth_${provider.id}`,
         label: provider.name || String(provider.id),
-        icon: <CustomProviderIcon iconUrl={provider.icon} />,
+        icon: (
+          <OAuthProviderIcon
+            icon={provider.icon}
+            fallback={<Link2 className='h-4 w-4' />}
+          />
+        ),
         value: binding?.provider_user_id || '',
         type: 'custom',
         providerId: provider.id,
@@ -261,7 +253,12 @@ export function UserBindingDialog(props: Props) {
         items.push({
           key: `oauth_${binding.provider_id}`,
           label: binding.provider_name || String(binding.provider_id),
-          icon: <Link2 className='h-4 w-4' />,
+          icon: (
+            <OAuthProviderIcon
+              icon={binding.provider_icon}
+              fallback={<Link2 className='h-4 w-4' />}
+            />
+          ),
           value: binding.provider_user_id || '-',
           type: 'custom',
           providerId: binding.provider_id,

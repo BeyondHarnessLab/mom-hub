@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/QuantumNous/new-api/common"
@@ -66,8 +67,15 @@ func TestTaskPluginSubmitDiagnosticsArePluginOnlyAndDoNotLogPayloads(t *testing.
 	diagnostics.durable(task)
 	diagnostics.complete(task, 12)
 
-	logOutput := output.String()
-	require.Contains(t, logOutput, "plugin-submit-request")
+	var messages []string
+	for line := range strings.Lines(output.String()) {
+		var record common.LogRecord
+		require.NoError(t, common.Unmarshal([]byte(line), &record))
+		assert.Equal(t, "plugin-submit-request", record.RequestID)
+		messages = append(messages, record.Message)
+	}
+	require.NotEmpty(t, messages)
+	logOutput := strings.Join(messages, "\n")
 	assert.Contains(t, logOutput, `plugin="debug-plugin"`)
 	assert.Contains(t, logOutput, `public_task_id="public-task-id"`)
 	assert.Contains(t, logOutput, "task_data_bytes=24")

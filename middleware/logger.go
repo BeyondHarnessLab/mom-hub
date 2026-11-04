@@ -1,7 +1,6 @@
 package middleware
 
 import (
-	"fmt"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -10,6 +9,20 @@ import (
 )
 
 const RouteTagKey = "route_tag"
+
+// accessLogLine is the JSON log record of one HTTP request, sharing ts, level
+// and request_id with the other server log records.
+type accessLogLine struct {
+	Time      string  `json:"ts"`
+	Level     string  `json:"level"`
+	RequestID string  `json:"request_id,omitempty"`
+	Route     string  `json:"route"`
+	Method    string  `json:"method"`
+	Path      string  `json:"path"`
+	Status    int     `json:"status"`
+	LatencyMs float64 `json:"latency_ms"`
+	ClientIP  string  `json:"client_ip"`
+}
 
 func RouteTag(tag string) gin.HandlerFunc {
 	return func(c *gin.Context) {
@@ -38,15 +51,20 @@ func SetUpLogger(server *gin.Engine) {
 			query := param.Request.URL.Query().Encode()
 			path = param.Request.URL.EscapedPath() + relaycommon.SanitizeURLForLog("?"+query)
 		}
-		return fmt.Sprintf("[GIN] %s | %s | %s | %3d | %13v | %15s | %7s %s\n",
-			param.TimeStamp.Format("2006/01/02 - 15:04:05"),
-			tag,
-			requestID,
-			param.StatusCode,
-			param.Latency,
-			param.ClientIP,
-			param.Method,
-			path,
-		)
+		line, err := common.Marshal(accessLogLine{
+			Time:      param.TimeStamp.Format(common.LogTimeFormat),
+			Level:     common.LogLevelInfo,
+			RequestID: requestID,
+			Route:     tag,
+			Method:    param.Method,
+			Path:      path,
+			Status:    param.StatusCode,
+			LatencyMs: float64(param.Latency.Microseconds()) / 1000,
+			ClientIP:  param.ClientIP,
+		})
+		if err != nil {
+			return ""
+		}
+		return string(line) + "\n"
 	}))
 }

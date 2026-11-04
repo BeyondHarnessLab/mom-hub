@@ -3,6 +3,7 @@ package model
 import (
 	"bytes"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/proto"
@@ -96,6 +97,12 @@ func TestGormLoggerEndToEndSanitizedOutput(t *testing.T) {
 
 	common.DebugEnabled = false
 	out := execQuery()
+	// One query error is one JSON record, caller and SQL on the same line.
+	require.Equal(t, 1, strings.Count(out, "\n"))
+	var record common.LogRecord
+	require.NoError(t, common.Unmarshal([]byte(out), &record))
+	assert.Equal(t, common.LogLevelError, record.Level)
+	assert.NotContains(t, record.Message, "\n")
 	assert.Contains(t, out, "k = ?")
 	assert.NotContains(t, out, "secret-value")
 	assert.Contains(t, out, "sqlite error")

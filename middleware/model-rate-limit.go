@@ -12,6 +12,7 @@ import (
 	"github.com/QuantumNous/new-api/common/limiter"
 	"github.com/QuantumNous/new-api/constant"
 	"github.com/QuantumNous/new-api/i18n"
+	"github.com/QuantumNous/new-api/logger"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/setting"
 
@@ -88,7 +89,7 @@ func redisRateLimitHandler(subject string, duration int64, totalMaxCount, succes
 		successKey := fmt.Sprintf("rateLimit:%s:%s", ModelRequestRateLimitSuccessCountMark, subject)
 		allowed, err := checkRedisRateLimit(ctx, rdb, successKey, successMaxCount, duration)
 		if err != nil {
-			fmt.Println(common.LogText("failed to check the successful request limit: %s", err.Error()))
+			logger.LogError(c, common.LogText("failed to check the successful request limit: %s", err.Error()))
 			abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
 			return
 		}
@@ -111,7 +112,7 @@ func redisRateLimitHandler(subject string, duration int64, totalMaxCount, succes
 			)
 
 			if err != nil {
-				fmt.Println(common.LogText("failed to check the total request limit: %s", err.Error()))
+				logger.LogError(c, common.LogText("failed to check the total request limit: %s", err.Error()))
 				abortWithOpenAiMessage(c, http.StatusInternalServerError, "rate_limit_check_failed")
 				return
 			}

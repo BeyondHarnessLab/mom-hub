@@ -446,7 +446,9 @@ export function parseTaskResult() { return {status: "SUCCESS"}; }
 	assert.NotContains(t, logB, "plugin-console-request-a")
 	assert.Contains(t, logB, "[plugin:console-debug@1.2.3] checkpoint context-b")
 
-	assert.Contains(t, logBackground, "| SYSTEM |")
+	var background common.LogRecord
+	require.NoError(t, common.Unmarshal([]byte(logBackground), &background))
+	assert.Empty(t, background.RequestID)
 	assert.NotContains(t, logBackground, "plugin-console-request-a")
 	assert.NotContains(t, logBackground, "plugin-console-request-b")
 	assert.Contains(t, logBackground, "[plugin:console-debug@1.2.3] checkpoint background")

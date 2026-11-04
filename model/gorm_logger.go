@@ -67,7 +67,7 @@ func (s *sanitizedLogWriter) Printf(format string, args ...any) {
 	}
 	// gorm 把调用点和 SQL 分两行输出,合成一行便于检索。
 	msg := strings.ReplaceAll(fmt.Sprintf(format, args...), "\n", " ")
-	common.WriteLogLine(s.out, level, "", msg)
+	common.WriteLogLine(s.out, common.LogRecord{Level: level, Message: msg})
 }
 
 // 只收敛数据库服务端生成的驱动错误(消息可能内联数据值);网络/上下文等

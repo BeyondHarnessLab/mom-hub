@@ -14,6 +14,7 @@ import (
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const maxLogCount = 1000000
@@ -89,16 +90,25 @@ func LogDebug(ctx context.Context, msg string, args ...any) {
 }
 
 func logHelper(ctx context.Context, level string, msg string) {
-	var requestID string
+	record := common.LogRecord{Level: level, Message: msg}
 	if ctx != nil {
-		requestID, _ = ctx.Value(common.RequestIdKey).(string)
+		record.RequestID, _ = ctx.Value(common.RequestIdKey).(string)
+		// A *gin.Context hands out only its own keys; the relay request's span
+		// is on its request's context.
+		if c, ok := ctx.(*gin.Context); ok && c.Request != nil {
+			ctx = c.Request.Context()
+		}
+		if span := trace.SpanContextFromContext(ctx); span.IsValid() {
+			record.TraceID = span.TraceID().String()
+			record.SpanID = span.SpanID().String()
+		}
 	}
 	common.LogWriterMu.RLock()
 	writer := gin.DefaultErrorWriter
 	if level == common.LogLevelInfo {
 		writer = gin.DefaultWriter
 	}
-	common.WriteLogLine(writer, level, requestID, msg)
+	common.WriteLogLine(writer, record)
 	common.LogWriterMu.RUnlock()
 	logCount++ // we don't need accurate count, so no lock here
 	if logCount > maxLogCount && !setupLogWorking {

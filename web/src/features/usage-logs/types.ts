@@ -121,6 +121,8 @@ export type ResponseModelBillingFallback =
 
 export interface LogOtherData {
   admin_info?: {
+    // OpenTelemetry trace of the relay request, including mom's spans
+    trace_id?: string
     request_policy?: PolicyEvent[]
     is_multi_key?: boolean
     multi_key_index?: number

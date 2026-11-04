@@ -6862,6 +6862,7 @@
     "Upstream receives": "上流が受信",
     "Upstream request failed": "上流リクエスト失敗",
     "Upstream Request ID": "上流リクエストID",
+    "Trace ID": "トレースID",
     "Upstream response": "上流レスポンス",
     "Upstream Response": "アップストリームレスポンス",
     "Upstream Response (billing-usage-anthropic-estimated)": "アップストリームレスポンス (billing-usage-anthropic-estimated)",

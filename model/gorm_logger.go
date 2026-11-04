@@ -4,8 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ClickHouse/clickhouse-go/v2/lib/proto"
@@ -37,30 +37,37 @@ func newGormLogger(w io.Writer) logger.Interface {
 	}
 	// 在 Writer 层脱敏而非包装 logger.Interface:后者会让 gorm 的 FileWithLineNum
 	// 把所有 SQL 日志的调用点归因到包装层自身,且需转发 ParamsFilter 类型断言。
-	return logger.New(&sanitizedLogWriter{delegate: log.New(w, "\r\n", log.LstdFlags)}, logger.Config{
+	return logger.New(&sanitizedLogWriter{out: w}, logger.Config{
 		SlowThreshold:             time.Duration(slowThresholdMs) * time.Millisecond,
 		LogLevel:                  logger.Warn,
 		IgnoreRecordNotFoundError: true,
 		ParameterizedQueries:      !common.DebugEnabled,
-		Colorful:                  true,
+		Colorful:                  false,
 	})
 }
 
 // ParameterizedQueries 只过滤 SQL 字符串,驱动错误消息(如 MySQL 1062)同样会
 // 内联数据值,在这里收敛为错误码;DEBUG=true 保留原文。
+// 每条输出写成一条 JSON 日志:带 error 参数的是 ERROR,其余(慢 SQL、警告)是 WARN。
 type sanitizedLogWriter struct {
-	delegate *log.Logger
+	out io.Writer
 }
 
 func (s *sanitizedLogWriter) Printf(format string, args ...any) {
-	if !common.DebugEnabled {
-		for i, arg := range args {
-			if err, ok := arg.(error); ok {
-				args[i] = sanitizeDBError(err)
-			}
+	level := common.LogLevelWarn
+	for i, arg := range args {
+		err, ok := arg.(error)
+		if !ok {
+			continue
+		}
+		level = common.LogLevelError
+		if !common.DebugEnabled {
+			args[i] = sanitizeDBError(err)
 		}
 	}
-	s.delegate.Printf(format, args...)
+	// gorm 把调用点和 SQL 分两行输出,合成一行便于检索。
+	msg := strings.ReplaceAll(fmt.Sprintf(format, args...), "\n", " ")
+	common.WriteLogLine(s.out, level, "", msg)
 }
 
 // 只收敛数据库服务端生成的驱动错误(消息可能内联数据值);网络/上下文等

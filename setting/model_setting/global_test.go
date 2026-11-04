@@ -2,8 +2,10 @@ package model_setting
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -34,8 +36,16 @@ func TestShouldPreserveThinkingSuffixExactAndRegex(t *testing.T) {
 	assert.True(t, ShouldPreserveThinkingSuffix("m@sha256:abc"))
 	assert.False(t, ShouldPreserveThinkingSuffix("m@sha256"))
 	assert.False(t, ShouldPreserveThinkingSuffix("qwen3-max@thinking:on"))
-	require.Contains(t, logged.String(), `invalid thinking_model_blacklist regex "re:["`)
-	require.Contains(t, logged.String(), `invalid thinking_model_blacklist regex "re:"`)
+	var messages []string
+	for line := range strings.Lines(logged.String()) {
+		var record common.LogRecord
+		require.NoError(t, common.Unmarshal([]byte(line), &record))
+		assert.Equal(t, "", record.RequestID)
+		messages = append(messages, record.Message)
+	}
+	logOutput := strings.Join(messages, "\n")
+	require.Contains(t, logOutput, `invalid thinking_model_blacklist regex "re:["`)
+	require.Contains(t, logOutput, `invalid thinking_model_blacklist regex "re:"`)
 
 	settings.ThinkingModelBlacklist = []string{"re:^beta@"}
 	assert.False(t, ShouldPreserveThinkingSuffix("m@sha256:abc"))

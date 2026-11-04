@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"log"
 	"os"
 	"path/filepath"
 	"sync"
@@ -15,13 +14,6 @@ import (
 
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
-)
-
-const (
-	loggerINFO  = "INFO"
-	loggerWarn  = "WARN"
-	loggerError = "ERR"
-	loggerDebug = "DEBUG"
 )
 
 const maxLogCount = 1000000
@@ -46,7 +38,7 @@ func SetupLogger() {
 	if *common.LogDir != "" {
 		ok := setupLogLock.TryLock()
 		if !ok {
-			log.Println(common.LogText("setup log is already working"))
+			common.SysLog(common.LogText("setup log is already working"))
 			return
 		}
 		defer func() {
@@ -55,7 +47,7 @@ func SetupLogger() {
 		logPath := filepath.Join(*common.LogDir, fmt.Sprintf("oneapi-%s.log", time.Now().Format("20060102150405")))
 		fd, err := os.OpenFile(logPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
-			log.Fatal(common.LogText("failed to open log file"))
+			common.FatalLog(common.LogText("failed to open log file"))
 		}
 		currentLogPathMu.Lock()
 		oldFile := currentLogFile
@@ -74,42 +66,39 @@ func SetupLogger() {
 }
 
 func LogInfo(ctx context.Context, msg string) {
-	logHelper(ctx, loggerINFO, msg)
+	logHelper(ctx, common.LogLevelInfo, msg)
 }
 
 func LogWarn(ctx context.Context, msg string, args ...any) {
 	if len(args) > 0 {
 		msg = fmt.Sprintf(msg, args...)
 	}
-	logHelper(ctx, loggerWarn, msg)
+	logHelper(ctx, common.LogLevelWarn, msg)
 }
 
 func LogError(ctx context.Context, msg string) {
-	logHelper(ctx, loggerError, msg)
+	logHelper(ctx, common.LogLevelError, msg)
 }
 
 // LogDebug formats msg with common.LogText only when debug logging is on, so
 // callers pass the format and its arguments instead of a formatted string.
 func LogDebug(ctx context.Context, msg string, args ...any) {
 	if common.DebugEnabled {
-		logHelper(ctx, loggerDebug, common.LogText(msg, args...))
+		logHelper(ctx, common.LogLevelDebug, common.LogText(msg, args...))
 	}
 }
 
 func logHelper(ctx context.Context, level string, msg string) {
-	var id any = "SYSTEM"
+	var requestID string
 	if ctx != nil {
-		if requestID := ctx.Value(common.RequestIdKey); requestID != nil {
-			id = requestID
-		}
+		requestID, _ = ctx.Value(common.RequestIdKey).(string)
 	}
-	now := time.Now()
 	common.LogWriterMu.RLock()
 	writer := gin.DefaultErrorWriter
-	if level == loggerINFO {
+	if level == common.LogLevelInfo {
 		writer = gin.DefaultWriter
 	}
-	_, _ = fmt.Fprintf(writer, "[%s] %v | %s | %s \n", level, now.Format("2006/01/02 - 15:04:05"), id, msg)
+	common.WriteLogLine(writer, level, requestID, msg)
 	common.LogWriterMu.RUnlock()
 	logCount++ // we don't need accurate count, so no lock here
 	if logCount > maxLogCount && !setupLogWorking {

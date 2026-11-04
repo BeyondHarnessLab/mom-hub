@@ -2,15 +2,93 @@ package channel
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
+	"github.com/QuantumNous/new-api/middleware"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
+	"github.com/QuantumNous/new-api/service"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/propagation"
+	sdktrace "go.opentelemetry.io/otel/sdk/trace"
+	"go.opentelemetry.io/otel/sdk/trace/tracetest"
+	"go.opentelemetry.io/otel/trace/noop"
 )
+
+// A relay request starts its own trace, keeps the caller's as a link, and
+// hands it to the upstream in traceparent, so mom's spans join it. The
+// upstream also gets the request ID, and the upstream call's span lasts until
+// the relay has read the response body.
+func TestRelayTraceContinuesAtTheUpstream(t *testing.T) {
+	recorder := tracetest.NewSpanRecorder()
+	otel.SetTracerProvider(sdktrace.NewTracerProvider(sdktrace.WithSpanProcessor(recorder)))
+	otel.SetTextMapPropagator(propagation.TraceContext{})
+	t.Cleanup(func() {
+		otel.SetTracerProvider(noop.NewTracerProvider())
+		otel.SetTextMapPropagator(propagation.NewCompositeTextMapPropagator())
+	})
+
+	var upstreamHeader http.Header
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		upstreamHeader = r.Header.Clone()
+		_, _ = io.WriteString(w, `{"id":"chatcmpl-1"}`)
+	}))
+	defer upstream.Close()
+
+	service.InitHttpClient()
+	gin.SetMode(gin.TestMode)
+	engine := gin.New()
+	engine.Use(middleware.RequestId())
+	engine.POST("/v1/chat/completions", middleware.Trace(), func(c *gin.Context) {
+		req, err := http.NewRequest(http.MethodPost, upstream.URL+"/v1/chat/completions?access_token=secret", strings.NewReader("{}"))
+		require.NoError(t, err)
+		info := &relaycommon.RelayInfo{ChannelMeta: &relaycommon.ChannelMeta{ChannelId: 7, ChannelType: 1}, RetryIndex: 1}
+		resp, err := doRequest(c, req, info)
+		require.NoError(t, err)
+		assert.Empty(t, recorder.Ended(), "the upstream span lasts until the body is read to its end")
+		_, err = io.ReadAll(resp.Body)
+		require.NoError(t, err)
+		require.NoError(t, resp.Body.Close())
+		c.Status(http.StatusOK)
+	})
+
+	const callerTraceID = "0af7651916cd43dd8448eb211c80319c"
+	request := httptest.NewRequest(http.MethodPost, "/v1/chat/completions", strings.NewReader("{}"))
+	request.Header.Set("traceparent", "00-"+callerTraceID+"-b7ad6b7169203331-01")
+	response := httptest.NewRecorder()
+	engine.ServeHTTP(response, request)
+	require.Equal(t, http.StatusOK, response.Code)
+
+	ended := recorder.Ended()
+	require.Len(t, ended, 2)
+	upstreamSpan, serverSpan := ended[0], ended[1]
+
+	assert.False(t, serverSpan.Parent().IsValid())
+	assert.NotEqual(t, callerTraceID, serverSpan.SpanContext().TraceID().String())
+	require.Len(t, serverSpan.Links(), 1)
+	assert.Equal(t, callerTraceID, serverSpan.Links()[0].SpanContext.TraceID().String())
+
+	assert.Equal(t, serverSpan.SpanContext().SpanID(), upstreamSpan.Parent().SpanID())
+	assert.Equal(t,
+		"00-"+serverSpan.SpanContext().TraceID().String()+"-"+upstreamSpan.SpanContext().SpanID().String()+"-01",
+		upstreamHeader.Get("traceparent"))
+	assert.Equal(t, response.Header().Get(common.RequestIdKey), upstreamHeader.Get("X-Request-ID"))
+
+	assert.Contains(t, upstreamSpan.Attributes(), attribute.String("url.path", "/v1/chat/completions"))
+	assert.Contains(t, upstreamSpan.Attributes(), attribute.Int("channel.id", 7))
+	assert.Contains(t, upstreamSpan.Attributes(), attribute.Int("relay.retry", 1))
+	for _, attr := range upstreamSpan.Attributes() {
+		assert.NotContains(t, attr.Value.Emit(), "secret", "the query may carry credentials")
+	}
+}
 
 func TestNewTaskAPIRequestInheritsClientCancellation(t *testing.T) {
 	recorder := httptest.NewRecorder()
@@ -126,7 +204,7 @@ func TestProcessHeaderOverride_RuntimeOverrideIsFinalHeaderMap(t *testing.T) {
 	require.False(t, exists)
 }
 
-func TestProcessHeaderOverride_PassthroughSkipsAcceptEncoding(t *testing.T) {
+func TestProcessHeaderOverride_PassthroughSkipsAcceptEncodingAndTraceContext(t *testing.T) {
 	t.Parallel()
 
 	gin.SetMode(gin.TestMode)
@@ -135,6 +213,9 @@ func TestProcessHeaderOverride_PassthroughSkipsAcceptEncoding(t *testing.T) {
 	ctx.Request = httptest.NewRequest(http.MethodPost, "/v1/chat/completions", nil)
 	ctx.Request.Header.Set("X-Trace-Id", "trace-123")
 	ctx.Request.Header.Set("Accept-Encoding", "gzip")
+	ctx.Request.Header.Set("Traceparent", "00-0af7651916cd43dd8448eb211c80319c-b7ad6b7169203331-01")
+	ctx.Request.Header.Set("Tracestate", "vendor=caller")
+	ctx.Request.Header.Set("Baggage", "tenant=caller")
 
 	info := &relaycommon.RelayInfo{
 		IsChannelTest: false,
@@ -151,6 +232,9 @@ func TestProcessHeaderOverride_PassthroughSkipsAcceptEncoding(t *testing.T) {
 
 	_, hasAcceptEncoding := headers["accept-encoding"]
 	require.False(t, hasAcceptEncoding)
+	for _, name := range []string{"traceparent", "tracestate", "baggage"} {
+		assert.NotContains(t, headers, name)
+	}
 }
 
 func TestProcessHeaderOverride_PassHeadersTemplateSetsRuntimeHeaders(t *testing.T) {

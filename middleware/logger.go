@@ -7,6 +7,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
 )
 
 const RouteTagKey = "route_tag"
@@ -17,6 +18,7 @@ type accessLogLine struct {
 	Time      string  `json:"ts"`
 	Level     string  `json:"level"`
 	RequestID string  `json:"request_id,omitempty"`
+	TraceID   string  `json:"trace_id,omitempty"`
 	Route     string  `json:"route"`
 	Method    string  `json:"method"`
 	Path      string  `json:"path"`
@@ -59,10 +61,15 @@ func SetUpLogger(server *gin.Engine) {
 			query := param.Request.URL.Query().Encode()
 			path = param.Request.URL.EscapedPath() + relaycommon.SanitizeURLForLog("?"+query)
 		}
+		var traceID string
+		if span := trace.SpanContextFromContext(param.Request.Context()); span.IsValid() {
+			traceID = span.TraceID().String()
+		}
 		line, err := common.Marshal(accessLogLine{
 			Time:      param.TimeStamp.Format(common.LogTimeFormat),
 			Level:     common.LogLevelInfo,
 			RequestID: requestID,
+			TraceID:   traceID,
 			Route:     tag,
 			Method:    param.Method,
 			Path:      path,

@@ -51,6 +51,10 @@ func main() {
 	if len(os.Args) > 1 && os.Args[1] == "plugin" {
 		os.Exit(jsplugin.RunCLI(os.Args[2:], os.Stdout, os.Stderr))
 	}
+	// The standard library's log package (ours, net/http's, third-party
+	// packages') writes JSON log records like the rest of the server.
+	log.SetFlags(0)
+	log.SetOutput(common.StdLogWriter{})
 	startTime := time.Now()
 	kitutil.SetLogging(common.SysLog, func(message string) {
 		logger.LogError(nil, message)

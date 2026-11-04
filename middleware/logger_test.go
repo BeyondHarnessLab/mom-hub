@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/QuantumNous/new-api/common"
 	"github.com/gin-gonic/gin"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -48,9 +49,14 @@ func TestSetUpLoggerMasksQueryCredentials(t *testing.T) {
 			router.ServeHTTP(response, request)
 
 			require.Equal(t, http.StatusUnauthorized, response.Code)
-			_, loggedPath, found := strings.Cut(strings.TrimSuffix(output.String(), "\n"), "GET ")
-			require.True(t, found)
-			assert.Equal(t, tc.loggedPath, loggedPath)
+			require.Equal(t, 1, strings.Count(output.String(), "\n"))
+			var line accessLogLine
+			require.NoError(t, common.Unmarshal(output.Bytes(), &line))
+			assert.Equal(t, common.LogLevelInfo, line.Level)
+			assert.Equal(t, "web", line.Route)
+			assert.Equal(t, http.MethodGet, line.Method)
+			assert.Equal(t, http.StatusUnauthorized, line.Status)
+			assert.Equal(t, tc.loggedPath, line.Path)
 			assert.Equal(t, originalURL, *request.URL)
 			assert.Equal(t, tc.target, request.RequestURI)
 		})

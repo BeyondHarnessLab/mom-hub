@@ -265,14 +265,22 @@ func TestDistributeHidesTaskPluginDetailsButLogsDiagnostics(t *testing.T) {
 				assert.JSONEq(t, fmt.Sprintf(`{"error":{"message":%q,"type":"new_api_error","code":"model_not_found"}}`,
 					locale.message+" (request id: "+requestID+")"), recorder.Body.String())
 				assert.NotContains(t, recorder.Body.String(), "disable or override")
+				var messages []string
+				for line := range strings.Lines(logs.String()) {
+					var record common.LogRecord
+					require.NoError(t, common.Unmarshal([]byte(line), &record))
+					assert.Equal(t, requestID, record.RequestID)
+					messages = append(messages, record.Message)
+				}
+				require.NotEmpty(t, messages)
+				logged := strings.Join(messages, "\n")
 				for _, key := range keys {
 					assert.NotContains(t, recorder.Body.String(), key)
-					assert.Contains(t, logs.String(), key)
+					assert.Contains(t, logged, key)
 				}
-				assert.Contains(t, logs.String(), requestID)
-				assert.Contains(t, logs.String(), `group="`+group+`"`)
-				assert.Contains(t, logs.String(), `model="task-model"`)
-				assert.Contains(t, logs.String(), "reason=no_eligible_channel")
+				assert.Contains(t, logged, `group="`+group+`"`)
+				assert.Contains(t, logged, `model="task-model"`)
+				assert.Contains(t, logged, "reason=no_eligible_channel")
 			})
 		}
 	}

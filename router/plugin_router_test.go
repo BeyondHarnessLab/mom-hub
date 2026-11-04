@@ -80,8 +80,15 @@ func TestPluginDebugLogsOnlyOwnedRoutes(t *testing.T) {
 
 	owned := performPluginRequest(outer, http.MethodGet, "/vendor/debug")
 	require.Equal(t, http.StatusNoContent, owned.Code)
-	logOutput := output.String()
-	assert.Contains(t, logOutput, "request-phase-two")
+	var messages []string
+	for line := range strings.Lines(output.String()) {
+		var record common.LogRecord
+		require.NoError(t, common.Unmarshal([]byte(line), &record))
+		assert.Equal(t, "request-phase-two", record.RequestID)
+		messages = append(messages, record.Message)
+	}
+	require.NotEmpty(t, messages)
+	logOutput := strings.Join(messages, "\n")
 	assert.Contains(t, logOutput, "task_plugin subsystem=router event=route_matched")
 	assert.Contains(t, logOutput, `plugin="debug-owner"`)
 	assert.NotContains(t, logOutput, "/vendor/debug")

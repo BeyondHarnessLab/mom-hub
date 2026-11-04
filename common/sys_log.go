@@ -31,23 +31,24 @@ const LogTimeFormat = "2006-01-02T15:04:05.000Z07:00"
 
 // LogRecord is one server log record. Every record is a single JSON object on
 // its own line, so a log collector indexes its fields instead of parsing text.
+// trace_id and span_id use mom's key names, so one trace ID finds the lines of
+// both services.
 type LogRecord struct {
 	Time      string `json:"ts"`
 	Level     string `json:"level"`
 	RequestID string `json:"request_id,omitempty"`
+	TraceID   string `json:"trace_id,omitempty"`
+	SpanID    string `json:"span_id,omitempty"`
 	Message   string `json:"msg"`
 }
 
-// WriteLogLine writes msg to w as one JSON log record in a single Write, so
-// concurrent records do not interleave. A newline inside msg stays inside the
-// JSON string: a multi-line message is still one record.
-func WriteLogLine(w io.Writer, level string, requestID string, msg string) {
-	line, err := Marshal(LogRecord{
-		Time:      time.Now().Format(LogTimeFormat),
-		Level:     level,
-		RequestID: requestID,
-		Message:   msg,
-	})
+// WriteLogLine stamps record with the current time and writes it to w as one
+// JSON line in a single Write, so concurrent records do not interleave. A
+// newline inside the message stays inside the JSON string: a multi-line
+// message is still one record.
+func WriteLogLine(w io.Writer, record LogRecord) {
+	record.Time = time.Now().Format(LogTimeFormat)
+	line, err := Marshal(record)
 	if err != nil {
 		return
 	}
@@ -61,25 +62,25 @@ func WriteLogLine(w io.Writer, level string, requestID string, msg string) {
 type StdLogWriter struct{}
 
 func (StdLogWriter) Write(p []byte) (int, error) {
-	WriteLogLine(os.Stderr, LogLevelWarn, "", strings.TrimSuffix(string(p), "\n"))
+	WriteLogLine(os.Stderr, LogRecord{Level: LogLevelWarn, Message: strings.TrimSuffix(string(p), "\n")})
 	return len(p), nil
 }
 
 func SysLog(s string) {
 	LogWriterMu.RLock()
-	WriteLogLine(gin.DefaultWriter, LogLevelInfo, "", s)
+	WriteLogLine(gin.DefaultWriter, LogRecord{Level: LogLevelInfo, Message: s})
 	LogWriterMu.RUnlock()
 }
 
 func SysError(s string) {
 	LogWriterMu.RLock()
-	WriteLogLine(gin.DefaultErrorWriter, LogLevelError, "", s)
+	WriteLogLine(gin.DefaultErrorWriter, LogRecord{Level: LogLevelError, Message: s})
 	LogWriterMu.RUnlock()
 }
 
 func FatalLog(v ...any) {
 	LogWriterMu.RLock()
-	WriteLogLine(gin.DefaultErrorWriter, LogLevelFatal, "", fmt.Sprint(v...))
+	WriteLogLine(gin.DefaultErrorWriter, LogRecord{Level: LogLevelFatal, Message: fmt.Sprint(v...)})
 	LogWriterMu.RUnlock()
 	os.Exit(1)
 }
@@ -97,16 +98,16 @@ func LogStartupSuccess(startTime time.Time, port string) {
 	if !SessionCookieSecure {
 		// Warn when the local HTTP compatibility mode disables cookie transport
 		// security and refresh/logout Origin validation.
-		WriteLogLine(gin.DefaultWriter, LogLevelWarn, "", LogText("Warning: Refresh cookie is not secure and refresh/logout Origin validation is disabled. Please set SESSION_COOKIE_SECURE=true in production."))
+		WriteLogLine(gin.DefaultWriter, LogRecord{Level: LogLevelWarn, Message: LogText("Warning: Refresh cookie is not secure and refresh/logout Origin validation is disabled. Please set SESSION_COOKIE_SECURE=true in production.")})
 	}
 
-	WriteLogLine(gin.DefaultWriter, LogLevelInfo, "", fmt.Sprintf("%s %s %s", SystemName, Version, LogText("ready in %d ms", durationMs)))
+	WriteLogLine(gin.DefaultWriter, LogRecord{Level: LogLevelInfo, Message: fmt.Sprintf("%s %s %s", SystemName, Version, LogText("ready in %d ms", durationMs))})
 
 	if !IsRunningInContainer() {
-		WriteLogLine(gin.DefaultWriter, LogLevelInfo, "", fmt.Sprintf("%s http://localhost:%s/", LogText("Local:"), port))
+		WriteLogLine(gin.DefaultWriter, LogRecord{Level: LogLevelInfo, Message: fmt.Sprintf("%s http://localhost:%s/", LogText("Local:"), port)})
 	}
 
 	for _, ip := range networkIps {
-		WriteLogLine(gin.DefaultWriter, LogLevelInfo, "", fmt.Sprintf("%s http://%s:%s/", LogText("Network:"), ip, port))
+		WriteLogLine(gin.DefaultWriter, LogRecord{Level: LogLevelInfo, Message: fmt.Sprintf("%s http://%s:%s/", LogText("Network:"), ip, port)})
 	}
 }

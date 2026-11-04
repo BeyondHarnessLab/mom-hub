@@ -10,6 +10,7 @@ import (
 	"github.com/QuantumNous/new-api/types"
 
 	"github.com/gin-gonic/gin"
+	"go.opentelemetry.io/otel/trace"
 
 	"gorm.io/gorm"
 )
@@ -275,12 +276,24 @@ func RecordTopupLog(userId int, content *common.Message, callerIp string, paymen
 	}
 }
 
+// setRequestTrace records the trace ID of the relay request c serves, so an
+// admin can open a usage log's trace, which includes mom's spans.
+func (o *LogOther) setRequestTrace(c *gin.Context) {
+	if c.Request == nil {
+		return
+	}
+	if span := trace.SpanContextFromContext(c.Request.Context()); span.IsValid() {
+		o.SetAdmin("trace_id", span.TraceID().String())
+	}
+}
+
 func RecordErrorLog(c *gin.Context, userId int, channelId int, modelName string, tokenName string, content string, tokenId int, useTimeSeconds int,
 	isStream bool, group string, other *LogOther) {
 	logger.LogInfo(c, common.LogText("record error log: userId=%d, channelId=%d, modelName=%s, tokenName=%s, content=%s", userId, channelId, modelName, tokenName, common.LocalLogPreview(content)))
 	username := c.GetString("username")
 	requestId := c.GetString(common.RequestIdKey)
 	upstreamRequestId := c.GetString(common.UpstreamRequestIdKey)
+	other.setRequestTrace(c)
 	otherStr := other.JSONString()
 	// 判断是否需要记录 IP
 	needRecordIp := false
@@ -347,6 +360,7 @@ func RecordConsumeLog(c *gin.Context, userId int, params RecordConsumeLogParams)
 	createdAt := common.GetTimestamp()
 	other := params.Other
 	content := other.setContent(params.Content)
+	other.setRequestTrace(c)
 	otherStr := other.JSONString()
 	// 判断是否需要记录 IP
 	needRecordIp := false

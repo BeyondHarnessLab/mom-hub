@@ -6862,6 +6862,7 @@
     "Upstream receives": "Провайдер получает",
     "Upstream request failed": "Запрос провайдеру не выполнен",
     "Upstream Request ID": "ID вышестоящего запроса",
+    "Trace ID": "ID трассировки",
     "Upstream response": "Ответ провайдера",
     "Upstream Response": "Ответ Upstream",
     "Upstream Response (billing-usage-anthropic-estimated)": "Ответ upstream (billing-usage-anthropic-estimated)",

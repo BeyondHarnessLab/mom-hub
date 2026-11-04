@@ -1,6 +1,7 @@
 package channel
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -23,6 +24,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/codes"
+	"go.opentelemetry.io/otel/propagation"
+	semconv "go.opentelemetry.io/otel/semconv/v1.39.0"
+	"go.opentelemetry.io/otel/trace"
+	"go.opentelemetry.io/otel/trace/noop"
 )
 
 // ApplyUpstreamBodyMetadata restores metadata that net/http cannot infer from
@@ -97,6 +105,12 @@ var passthroughSkipHeaderNamesLower = map[string]struct{}{
 	"sec-websocket-key":        {},
 	"sec-websocket-version":    {},
 	"sec-websocket-extensions": {},
+
+	// Trace context comes from mom-hub's own trace (see doRequest); a caller's
+	// tracestate or baggage must not ride along with it.
+	"traceparent": {},
+	"tracestate":  {},
+	"baggage":     {},
 }
 
 var headerPassthroughRegexCache sync.Map // map[string]*regexp.Regexp
@@ -486,13 +500,51 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 	}
 
 	common2.SetContextKey(c, appconstant.ContextKeyUpstreamRequestOrigin, req.URL.Scheme+"://"+req.URL.Host)
+	// mom adopts X-Request-ID as its own request ID, so its log lines carry
+	// the request ID of this request's usage log. It replaces any value the
+	// channel's header settings put there, so the two IDs always match.
+	req.Header.Set("X-Request-ID", c.GetString(common2.RequestIdKey))
+	// Each upstream call is a client span of the relay request's trace, and
+	// traceparent hands the trace to the upstream, where mom continues it. The
+	// span goes on req's own context, so whether the call is cancelled along
+	// with the client stays as it was. Only host and path are recorded: some
+	// channels put credentials in the query.
+	upstreamSpan := trace.Span(noop.Span{})
+	if parent := trace.SpanFromContext(c.Request.Context()); parent.SpanContext().IsValid() {
+		var ctx context.Context
+		ctx, upstreamSpan = otel.Tracer("github.com/QuantumNous/new-api/relay/channel").Start(trace.ContextWithSpan(req.Context(), parent), "upstream "+req.Method,
+			trace.WithSpanKind(trace.SpanKindClient),
+			trace.WithAttributes(
+				semconv.HTTPRequestMethodKey.String(req.Method),
+				semconv.ServerAddress(req.URL.Host),
+				semconv.URLPath(req.URL.Path),
+				attribute.Int("channel.id", info.ChannelId),
+				attribute.Int("channel.type", info.ChannelType),
+				attribute.Int("relay.retry", info.RetryIndex),
+			),
+		)
+		req = req.WithContext(ctx)
+		otel.GetTextMapPropagator().Inject(ctx, propagation.HeaderCarrier(req.Header))
+	}
 	resp, err := relayClient.Do(req)
 	if err != nil {
+		// Client.Do wraps the cause in a *url.Error that names the full URL.
+		upstreamSpan.RecordError(errors.Unwrap(err))
+		upstreamSpan.SetStatus(codes.Error, "do request failed")
+		upstreamSpan.End()
 		logger.LogError(c, common2.LogText("do request failed: %s", err.Error()))
 		return nil, types.NewError(err, types.ErrorCodeDoRequestFailed, types.ErrOptionWithHideErrMsg("upstream error: do request failed"))
 	}
 	if resp == nil {
+		upstreamSpan.End()
 		return nil, errors.New("resp is nil")
+	}
+	upstreamSpan.SetAttributes(semconv.HTTPResponseStatusCode(resp.StatusCode))
+	if resp.StatusCode >= 400 {
+		upstreamSpan.SetStatus(codes.Error, "")
+	}
+	if upstreamSpan.IsRecording() {
+		resp.Body = &upstreamSpanBody{ReadCloser: resp.Body, span: upstreamSpan}
 	}
 	if common2.DebugEnabled {
 		policy := service.NormalizeHTTPTransportPolicy(info.ChannelSetting)
@@ -511,6 +563,31 @@ func doRequest(c *gin.Context, req *http.Request, info *common.RelayInfo) (*http
 	_ = req.Body.Close()
 	_ = c.Request.Body.Close()
 	return resp, nil
+}
+
+// upstreamSpanBody ends an upstream call's span once the relay has read the
+// response to its end or closed it, so a streamed reply's span lasts as long
+// as the stream.
+type upstreamSpanBody struct {
+	io.ReadCloser
+	span trace.Span
+}
+
+func (b *upstreamSpanBody) Read(p []byte) (int, error) {
+	n, err := b.ReadCloser.Read(p)
+	if err != nil {
+		if !errors.Is(err, io.EOF) {
+			b.span.RecordError(err)
+			b.span.SetStatus(codes.Error, "read response failed")
+		}
+		b.span.End()
+	}
+	return n, err
+}
+
+func (b *upstreamSpanBody) Close() error {
+	b.span.End()
+	return b.ReadCloser.Close()
 }
 
 func DoTaskApiRequest(a TaskAdaptor, c *gin.Context, info *common.RelayInfo, requestBody io.Reader) (*http.Response, error) {

@@ -25,6 +25,7 @@ import (
 	"github.com/QuantumNous/new-api/oauth"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
+	"github.com/QuantumNous/new-api/pkg/tracing"
 	"github.com/QuantumNous/new-api/pkg/wsmanager"
 	"github.com/QuantumNous/new-api/relay"
 	kitutil "github.com/QuantumNous/new-api/relaykit/relayconvert/kitutil"
@@ -181,6 +182,11 @@ func main() {
 		common.SysError(common.LogText("start pyroscope error : %v", err))
 	}
 
+	shutdownTracing, err := tracing.Init("mom-hub")
+	if err != nil {
+		common.SysError(common.LogText("failed to initialize trace export: %s", err.Error()))
+	}
+
 	// Initialize HTTP server
 	server := gin.New()
 	if err := middleware.ConfigureTrustedProxies(server); err != nil {
@@ -241,6 +247,11 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		common.SysError(common.LogText("server forced to shutdown: %v", err))
+	}
+	flushCtx, cancelFlush := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancelFlush()
+	if err := shutdownTracing(flushCtx); err != nil {
+		common.SysError(common.LogText("failed to flush traces: %v", err))
 	}
 	// 内存中的看板数据保存入库，避免重启丢失未落库数据 (issue #5679)
 	if common.DataExportEnabled {

@@ -6862,6 +6862,7 @@
     "Upstream receives": "上游收到",
     "Upstream request failed": "上游请求失败",
     "Upstream Request ID": "上游请求 ID",
+    "Trace ID": "链路追踪 ID",
     "Upstream response": "上游响应",
     "Upstream Response": "上游返回",
     "Upstream Response (billing-usage-anthropic-estimated)": "上游返回（billing-usage-anthropic-estimated）",

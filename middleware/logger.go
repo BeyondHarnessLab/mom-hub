@@ -1,6 +1,7 @@
 package middleware
 
 import (
+	"net/http"
 	"strings"
 
 	"github.com/QuantumNous/new-api/common"
@@ -34,6 +35,13 @@ func RouteTag(tag string) gin.HandlerFunc {
 func SetUpLogger(server *gin.Engine) {
 	server.Use(redactTaskArtifactAccessQuery())
 	server.Use(gin.LoggerWithFormatter(func(param gin.LogFormatterParams) string {
+		// Successful kubelet probes and load balancer health checks (HEAD /)
+		// arrive every few seconds per pod; failed ones are still logged.
+		isProbe := strings.HasPrefix(param.Request.UserAgent(), "kube-probe/") ||
+			(param.Method == http.MethodHead && param.Request.URL.Path == "/")
+		if isProbe && param.StatusCode < 400 {
+			return ""
+		}
 		var requestID string
 		if param.Keys != nil {
 			requestID, _ = param.Keys[common.RequestIdKey].(string)

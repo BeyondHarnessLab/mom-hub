@@ -304,23 +304,23 @@ it.each([200, 401])(
       access_expires_at: 2_000_000_000,
     }
     const open = vi.spyOn(XMLHttpRequest.prototype, 'open')
-    vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(
-      function (this: XMLHttpRequest) {
-        Object.defineProperties(this, {
-          status: { value: refreshStatus, configurable: true },
-          statusText: { value: 'Refresh response', configurable: true },
-          responseText: {
-            value: JSON.stringify({
-              success: refreshStatus === 200,
-              data: fresh,
-            }),
-            configurable: true,
-          },
-          readyState: { value: 4, configurable: true },
-        })
-        this.onloadend?.(new ProgressEvent('loadend'))
-      }
-    )
+    vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function (
+      this: XMLHttpRequest
+    ) {
+      Object.defineProperties(this, {
+        status: { value: refreshStatus, configurable: true },
+        statusText: { value: 'Refresh response', configurable: true },
+        responseText: {
+          value: JSON.stringify({
+            success: refreshStatus === 200,
+            data: fresh,
+          }),
+          configurable: true,
+        },
+        readyState: { value: 4, configurable: true },
+      })
+      this.onloadend?.(new ProgressEvent('loadend'))
+    })
     let requests = 0
     api.defaults.adapter = async (config) => {
       requests++
@@ -367,6 +367,48 @@ it.each([200, 401])(
     client.clear()
   }
 )
+
+it('does not report an expired session for queries rejected after the client signed out', async () => {
+  window.history.replaceState({}, '', '/sign-in')
+  vi.spyOn(XMLHttpRequest.prototype, 'send').mockImplementation(function (
+    this: XMLHttpRequest
+  ) {
+    Object.defineProperties(this, {
+      status: { value: 401, configurable: true },
+      statusText: { value: 'Unauthorized', configurable: true },
+      responseText: {
+        value: JSON.stringify({ success: false }),
+        configurable: true,
+      },
+      readyState: { value: 4, configurable: true },
+    })
+    this.onloadend?.(new ProgressEvent('loadend'))
+  })
+  api.defaults.adapter = async (config) => {
+    throw new AxiosError('HTTP 401', 'ERR_BAD_REQUEST', config, undefined, {
+      data: { success: false, message: 'Not signed in' },
+      status: 401,
+      statusText: 'Unauthorized',
+      headers: {},
+      config,
+    })
+  }
+  const notify = vi.spyOn(toast, 'error').mockReturnValue('error')
+  const client = createAppQueryClient()
+
+  await Promise.allSettled(
+    ['/api/data/self', '/api/token/', '/api/user/models'].map((url) =>
+      client.fetchQuery({
+        queryKey: [url],
+        queryFn: () => api.get(url),
+        retry: false,
+      })
+    )
+  )
+
+  expect(notify).not.toHaveBeenCalled()
+  client.clear()
+})
 
 it('never refreshes or replays a failed single-use authorization request', async () => {
   useAuthStore.getState().auth.setBundle({

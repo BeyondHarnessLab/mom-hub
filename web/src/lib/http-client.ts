@@ -26,7 +26,10 @@ import {
   getFreshAuthHeaders,
   refreshAuthentication,
 } from '@/lib/auth-session'
-import { handleServerError } from '@/lib/handle-server-error'
+import {
+  handleServerError,
+  markServerErrorHandled,
+} from '@/lib/handle-server-error'
 import {
   getServerErrorMessage,
   safeServerErrorMessage,
@@ -99,6 +102,8 @@ api.interceptors.response.use(
 
     if (status === 401) {
       if (config && !config.skipAuthRefresh && !config.authRetry) {
+        // Read before refreshing, which clears a session it cannot renew.
+        const hadSession = Boolean(useAuthStore.getState().auth.session)
         config.authRetry = true
         const outcome = await refreshAuthentication()
         if (outcome.kind === 'authenticated') {
@@ -113,12 +118,15 @@ api.interceptors.response.use(
         }
 
         if (outcome.kind === 'anonymous' || outcome.kind === 'out_of_sync') {
-          if (!skipErrorHandler) {
+          if (!skipErrorHandler && hadSession) {
             handleServerError({
               message: t('Session expired!'),
               [safeServerErrorMessage]: true,
               cause: error,
             })
+          } else if (!skipErrorHandler) {
+            // Queries refetched after a sign-out had no session to expire.
+            markServerErrorHandled(error)
           }
           redirectToSignIn()
         }

@@ -51,31 +51,6 @@ export function normalizeInterfaceLanguage(value?: string | null): string {
 }
 
 /**
- * Map a browser-detected locale onto the interface language codes this project
- * uses with i18next (`zhCN` / `zhTW`).
- *
- * Browsers report standard BCP-47 tags (`zh-CN`, `zh-TW`, `zh-Hant`, `zh`, ...),
- * but `supportedLngs`/resources use the non-standard camelCase codes, so without
- * this mapping a Chinese browser would never match and fall back to English.
- * Non-Chinese codes are returned unchanged so i18next's own `supportedLngs`
- * matching still applies (e.g. `fr-FR` -> `fr`, `ja` -> `ja`).
- */
-export function convertDetectedLanguage(value: string): string {
-  const lower = value.trim().replaceAll('_', '-').toLowerCase()
-  if (!lower.startsWith('zh')) return value
-  if (
-    lower === 'zhtw' ||
-    lower === 'zh-tw' ||
-    lower === 'zh-hk' ||
-    lower === 'zh-mo' ||
-    lower.startsWith('zh-hant')
-  ) {
-    return 'zhTW'
-  }
-  return 'zhCN'
-}
-
-/**
  * Convert an interface language code (the values i18next uses, such as `zhCN` /
  * `zhTW`) into a valid BCP-47 locale tag that the `Intl.*` APIs accept.
  *
@@ -99,4 +74,15 @@ export function toIntlLocale(value?: string | null): string | undefined {
   } catch {
     return undefined
   }
+}
+
+/**
+ * The `Accept-Language` value for requests made from the console. The backend
+ * writes emails and messages in the language a request states, so the console
+ * states its interface language rather than leaving the browser to state the
+ * system one. Languages the backend does not translate fall back to English
+ * there.
+ */
+export function toAcceptLanguage(value?: string | null): string {
+  return toIntlLocale(value) ?? 'en'
 }

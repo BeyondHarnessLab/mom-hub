@@ -16,9 +16,11 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import i18next from 'i18next'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { SSE } from 'sse.js'
 
+import { toAcceptLanguage } from '@/i18n/languages'
 import { getFreshAuthHeaders } from '@/lib/api'
 
 import { API_ENDPOINTS, ERROR_MESSAGES } from '../constants'
@@ -193,7 +195,10 @@ export function useStreamRequest() {
       getHeaders: getFreshAuthHeaders,
       createSource: (payload, headers) =>
         new SSE(API_ENDPOINTS.CHAT_COMPLETIONS, {
-          headers,
+          headers: {
+            ...headers,
+            'Accept-Language': toAcceptLanguage(i18next.language),
+          },
           method: 'POST',
           payload: JSON.stringify(payload),
         }) as StreamEventSource,

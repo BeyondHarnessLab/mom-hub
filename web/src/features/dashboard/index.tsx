@@ -85,12 +85,6 @@ const LazyLogStatCards = lazy(() =>
   }))
 )
 
-const LazyModelCharts = lazy(() =>
-  import('./components/models/model-charts').then((m) => ({
-    default: m.ModelCharts,
-  }))
-)
-
 const LazyConsumptionDistributionChart = lazy(() =>
   import('./components/models/consumption-distribution-chart').then((m) => ({
     default: m.ConsumptionDistributionChart,
@@ -376,18 +370,6 @@ export function Dashboard() {
                     defaultChartType={
                       chartPreferences.consumptionDistributionChart
                     }
-                    timeGranularity={
-                      modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
-                    }
-                  />
-                </Suspense>
-              </FadeIn>
-              <FadeIn delay={0.15}>
-                <Suspense fallback={<ModelChartsFallback />}>
-                  <LazyModelCharts
-                    data={modelData}
-                    loading={dataLoading}
-                    defaultChartTab={chartPreferences.modelAnalyticsChart}
                     timeGranularity={
                       modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
                     }

@@ -16,10 +16,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 
-import { Home } from '@/features/home'
-
+// Marketing lives on modeless.ai; the console root goes straight to the app
+// (the _authenticated guard sends signed-out visitors to sign-in).
 export const Route = createFileRoute('/')({
-  component: Home,
+  beforeLoad: () => {
+    throw redirect({ to: '/dashboard', replace: true })
+  },
 })

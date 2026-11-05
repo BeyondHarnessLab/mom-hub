@@ -19,6 +19,8 @@ For commercial licensing, please contact support@quantumnous.com
 @import 'tailwindcss';
 @import 'tw-animate-css';
 @import 'shadcn/tailwind.css';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 @import '@fontsource-variable/public-sans';
 /* Editorial serif (Lora) backing the `serif` font axis and the Anthropic
  * preset's default typography. See `--font-serif` in theme.css for the
@@ -117,6 +119,10 @@ For commercial licensing, please contact support@quantumnous.com
     font-family: var(--font-body);
   }
 
+  :is(h1, h2, h3) {
+    letter-spacing: -0.02em;
+  }
+
   /* Keep sticky headers stable while primitives lock body scrolling. */
   body[data-scroll-locked] {
     overflow: unset !important;
@@ -190,6 +196,14 @@ For commercial licensing, please contact support@quantumnous.com
 
 @utility max-w-container {
   max-width: 1280px;
+}
+
+@utility bg-grid {
+  --grid-line: color-mix(in oklch, var(--foreground) 5%, transparent);
+  background-image:
+    linear-gradient(to right, var(--grid-line) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-line) 1px, transparent 1px);
+  background-size: 40px 40px;
 }
 
 @utility max-w-container-lg {

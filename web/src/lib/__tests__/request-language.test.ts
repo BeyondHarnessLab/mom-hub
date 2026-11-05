@@ -33,7 +33,13 @@ async function statedLanguageOfNextRequest(): Promise<unknown> {
   let stated: unknown
   const adapter: AxiosAdapter = async (config) => {
     stated = config.headers.get('Accept-Language')
-    return { data: { success: true }, status: 200, statusText: 'OK', headers: {}, config }
+    return {
+      data: { success: true },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config,
+    }
   }
   api.defaults.adapter = adapter
   await api.post('/api/verification')

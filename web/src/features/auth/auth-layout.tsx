@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
+import { ProjectAttribution } from '@/components/layout/components/footer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { cn } from '@/lib/utils'
@@ -62,7 +63,7 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           )}
         </Link>
       </header>
-      <main className='relative z-10 flex flex-1 items-center justify-center px-4 pt-4 pb-16'>
+      <main className='relative z-10 flex flex-1 items-center justify-center px-4 pt-4 pb-8'>
         <div
           className={cn(
             'bg-card w-full max-w-[440px] rounded-[18px] border p-6 sm:p-9',
@@ -76,6 +77,10 @@ export function AuthLayout({ children }: AuthLayoutProps) {
           </div>
         </div>
       </main>
+      {/* Upstream attribution required by NOTICE (AGPLv3 section 7(b)). */}
+      <footer className='relative z-10 px-4 pb-6 text-center text-xs leading-relaxed'>
+        <ProjectAttribution currentYear={new Date().getFullYear()} inline />
+      </footer>
     </div>
   )
 }

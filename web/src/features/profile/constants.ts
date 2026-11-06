@@ -21,11 +21,9 @@ For commercial licensing, please contact support@quantumnous.com
 // ============================================================================
 
 /**
- * Notification methods
+ * Notification methods a user can choose. Webhook, Bark and Gotify are not
+ * offered, so a setting stored with one of them reads, and saves, as email.
  */
 export const NOTIFICATION_METHODS = [
   { value: 'email' as const, label: 'Email' },
-  { value: 'webhook' as const, label: 'Webhook' },
-  { value: 'bark' as const, label: 'Bark' },
-  { value: 'gotify' as const, label: 'Gotify' },
 ] as const

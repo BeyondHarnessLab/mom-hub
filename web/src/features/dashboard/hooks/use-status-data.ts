@@ -59,16 +59,13 @@ export function useFAQ() {
 }
 
 /**
- * Get dashboard content panel visibility
+ * Get dashboard content panel visibility. The overview no longer shows the
+ * API info, announcements and uptime panels, whatever their settings say.
  */
 export function useDashboardContentVisibility() {
   const { status } = useStatus()
-  const hasStatus = Boolean(status)
 
   return {
-    apiInfo: hasStatus && status?.api_info_enabled !== false,
-    announcements: hasStatus && status?.announcements_enabled !== false,
-    faq: hasStatus && status?.faq_enabled !== false,
-    uptimeKuma: hasStatus && status?.uptime_kuma_enabled !== false,
+    faq: Boolean(status) && status?.faq_enabled !== false,
   }
 }

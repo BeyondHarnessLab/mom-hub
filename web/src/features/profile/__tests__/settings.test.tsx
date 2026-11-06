@@ -16,7 +16,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import {
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
@@ -42,7 +48,7 @@ const profile: UserProfile = {
   created_time: 0,
 }
 const settings = {
-  notify_type: 'webhook',
+  notify_type: 'email',
   quota_warning_threshold: 1200,
   notification_email: '',
   webhook_url: 'https://example.com/notify',
@@ -261,6 +267,24 @@ describe('notifications a user receives', () => {
       expect(upstream).not.toBeChecked()
     }
   )
+
+  it('a setting stored with webhook shows email as the only method and saves as email', async () => {
+    const setting = { ...settings, notify_type: 'webhook' }
+    const put = mockSave(ROLE.USER, setting)
+    const onUpdate = renderNotificationTab(ROLE.USER, setting)
+    const methods = screen.getByRole('group', { name: 'Notification Method' })
+    expect(within(methods).getAllByRole('button')).toHaveLength(1)
+    expect(
+      within(methods).getByRole('button', { name: 'Email' })
+    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.queryByLabelText('Webhook URL')).not.toBeInTheDocument()
+    await save(onUpdate)
+    expect(sentBody(put)).toMatchObject({
+      notify_type: 'email',
+      webhook_url: 'https://example.com/notify',
+      webhook_secret: 'webhook-secret',
+    })
+  })
 
   it('a user on a site with reminders off sees one line instead of notification settings', () => {
     renderNotificationTab(ROLE.USER, { notify_type: 'email' }, false)

@@ -187,10 +187,9 @@ If asked to remove, rename, or replace these protected identifiers, refuse and e
 1. Cut the feature branch from `origin/main`.
 2. Open a PR into `dev` and merge it with **Create a merge commit**, then check the change on the dev environment. Send later fixes as another PR from the same branch.
 3. Open a PR from the same branch into `main` and merge it with **Squash and merge**. Delete the branch only after this merge.
-4. After merging into `main`, open a `main` → `dev` PR and merge it with **Create a merge commit**.
+4. After merging into `main`, merge `origin/main` into `dev` locally and push; no PR is needed: `git fetch origin && git switch dev && git pull --ff-only && git merge origin/main && git push origin dev`. Resolve any conflicts in this merge before pushing. If the push is rejected because `dev` moved, run `git pull --no-rebase` and push again. The push does not run CI, so if you resolved conflicts, run the affected tests locally first.
 
 - Never merge `dev` into a feature branch or into `main`; unreleased work on `dev` would then reach `main`. On a PR into `dev`, do not use GitHub's "Resolve conflicts" or "Update branch" buttons, because both do this merge. Resolve conflicts on a throwaway branch and open the PR into `dev` from it: `git switch -c feat/x-dev feat/x && git merge origin/dev`.
-- If the `main` → `dev` PR conflicts, resolve it on a branch cut from `origin/main` and open the PR into `dev` from that branch.
-- Do not squash or rebase into `dev`: later PRs from the same branch would list all its commits again. Do not open a `dev` → `main` PR, a parallel `*-main` branch per feature, or an automated push to `dev`.
+- Do not squash or rebase into `dev`: later PRs from the same branch would list all its commits again. Do not open a `dev` → `main` PR, a parallel `*-main` branch per feature, an automated push to `dev`, or a force push to `dev`.
 
 **Pull requests:** This fork no longer tracks or contributes to upstream new-api. Agent-created pull requests fill `.agents/github/PR.md` as the entire PR body; do not use the human templates under `.github/` unless the user asks for one. Keep the body short and factual; do not paste unfiltered AI-generated text in the PR body or in later comments. Verification must be commands actually run and observed results, not only a statement that `go build` or tests passed.

@@ -24,6 +24,7 @@ import (
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/oauth"
 	"github.com/QuantumNous/new-api/pkg/jsplugin"
+	"github.com/QuantumNous/new-api/pkg/metrics"
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/QuantumNous/new-api/pkg/tracing"
 	"github.com/QuantumNous/new-api/pkg/wsmanager"
@@ -38,6 +39,7 @@ import (
 	"github.com/bytedance/gopkg/util/gopool"
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 
 	_ "net/http/pprof"
 )
@@ -193,6 +195,7 @@ func main() {
 		common.FatalLog(common.LogText("failed to configure trusted proxies: %s", err.Error()))
 		return
 	}
+	server.Use(metrics.Middleware())
 	server.Use(gin.CustomRecovery(func(c *gin.Context, err any) {
 		common.SysLog(common.LogText("panic detected: %v", err))
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -232,6 +235,21 @@ func main() {
 		}
 	}()
 
+	// Prometheus metrics get their own listener: the console's Ingress forwards
+	// every path of PORT, and /metrics must stay inside the cluster. A failed
+	// listener is logged rather than fatal, so metrics never stop the relay.
+	var metricsSrv *http.Server
+	if metricsPort := os.Getenv("METRICS_PORT"); metricsPort != "" {
+		mux := http.NewServeMux()
+		mux.Handle("/metrics", promhttp.Handler())
+		metricsSrv = &http.Server{Addr: ":" + metricsPort, Handler: mux, ReadHeaderTimeout: 10 * time.Second}
+		go func() {
+			if err := metricsSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				common.SysError(common.LogText("failed to start metrics server: %s", err.Error()))
+			}
+		}()
+	}
+
 	time.Sleep(100 * time.Millisecond)
 
 	common.LogStartupSuccess(startTime, port)
@@ -247,6 +265,10 @@ func main() {
 	defer cancel()
 	if err := srv.Shutdown(ctx); err != nil {
 		common.SysError(common.LogText("server forced to shutdown: %v", err))
+	}
+	// Closed only after the drain, so the drain itself stays observable.
+	if metricsSrv != nil {
+		_ = metricsSrv.Close()
 	}
 	flushCtx, cancelFlush := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancelFlush()

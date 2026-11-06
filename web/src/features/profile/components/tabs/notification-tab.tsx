@@ -140,40 +140,42 @@ export function NotificationTab({
 
       {(quotaRemindEnabled || isAdmin) && (
         <>
-          {/* Notification Type */}
-          <div className='space-y-2.5'>
-            <Label>{t('Notification Method')}</Label>
-            <ToggleGroup
-              value={[notifyType]}
-              onValueChange={(value) => {
-                const nextValue = value.find((item) => item !== notifyType)
-                if (nextValue) {
-                  updateField('notify_type', nextValue as NotifyType)
-                }
-              }}
-              aria-label={t('Notification Method')}
-              variant='outline'
-              size='lg'
-              spacing={2}
-              className='grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3'
-            >
-              {NOTIFICATION_METHODS.map((method) => {
-                const Icon = NOTIFICATION_ICONS[method.value]
-                return (
-                  <ToggleGroupItem
-                    key={method.value}
-                    value={method.value}
-                    className='h-auto min-h-14 w-full flex-col gap-1.5 px-3 py-3 sm:min-h-16'
-                  >
-                    <Icon className='h-4 w-4 sm:h-5 sm:w-5' />
-                    <span className='max-w-full truncate text-xs font-medium sm:text-sm'>
-                      {t(method.label)}
-                    </span>
-                  </ToggleGroupItem>
-                )
-              })}
-            </ToggleGroup>
-          </div>
+          {/* Notification Type: only worth showing with a real choice */}
+          {NOTIFICATION_METHODS.length > 1 && (
+            <div className='space-y-2.5'>
+              <Label>{t('Notification Method')}</Label>
+              <ToggleGroup
+                value={[notifyType]}
+                onValueChange={(value) => {
+                  const nextValue = value.find((item) => item !== notifyType)
+                  if (nextValue) {
+                    updateField('notify_type', nextValue as NotifyType)
+                  }
+                }}
+                aria-label={t('Notification Method')}
+                variant='outline'
+                size='lg'
+                spacing={2}
+                className='grid w-full grid-cols-2 gap-2 sm:grid-cols-4 sm:gap-3'
+              >
+                {NOTIFICATION_METHODS.map((method) => {
+                  const Icon = NOTIFICATION_ICONS[method.value]
+                  return (
+                    <ToggleGroupItem
+                      key={method.value}
+                      value={method.value}
+                      className='h-auto min-h-14 w-full flex-col gap-1.5 px-3 py-3 sm:min-h-16'
+                    >
+                      <Icon className='h-4 w-4 sm:h-5 sm:w-5' />
+                      <span className='max-w-full truncate text-xs font-medium sm:text-sm'>
+                        {t(method.label)}
+                      </span>
+                    </ToggleGroupItem>
+                  )
+                })}
+              </ToggleGroup>
+            </div>
+          )}
 
           {/* Email Settings */}
           {notifyType === 'email' && (

@@ -20,16 +20,22 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import {
   createMemoryHistory,
   createRootRoute,
-  createRoute,
   createRouter,
   RouterProvider,
 } from '@tanstack/react-router'
-import { cleanup, render, screen, within } from '@testing-library/react'
+import {
+  cleanup,
+  render,
+  screen,
+  waitFor,
+  within,
+} from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 
 import { ThemeProvider } from '@/context/theme-provider'
 import { api } from '@/lib/api'
+import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { Dashboard } from '../index'
@@ -39,14 +45,6 @@ vi.mock('@visactor/react-vchart', () => ({ VChart: () => null }))
 
 beforeEach(() => {
   window.localStorage.clear()
-  useAuthStore.getState().auth.setUser({
-    id: 1,
-    username: 'dashboard-user',
-    role: 1,
-    quota: 1000000,
-    used_quota: 1000,
-    request_count: 1,
-  })
   vi.spyOn(api, 'get').mockResolvedValue({ data: { success: true, data: [] } })
 })
 
@@ -57,21 +55,18 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('model call analytics shows quota distribution without the call chart or its default', async () => {
-  const user = userEvent.setup()
-  const root = createRootRoute()
-  const authenticated = createRoute({
-    getParentRoute: () => root,
-    id: '_authenticated',
-  })
-  const dashboard = createRoute({
-    getParentRoute: () => authenticated,
-    path: 'dashboard/$section',
-    component: Dashboard,
+async function renderDashboard(role: number) {
+  useAuthStore.getState().auth.setUser({
+    id: 1,
+    username: 'dashboard-user',
+    role,
+    quota: 1000000,
+    used_quota: 1000,
+    request_count: 1,
   })
   const router = createRouter({
-    routeTree: root.addChildren([authenticated.addChildren([dashboard])]),
-    history: createMemoryHistory({ initialEntries: ['/dashboard/models'] }),
+    routeTree: createRootRoute({ component: Dashboard }),
+    history: createMemoryHistory({ initialEntries: ['/'] }),
   })
   await router.load()
   render(
@@ -85,6 +80,90 @@ it('model call analytics shows quota distribution without the call chart or its 
       </QueryClientProvider>
     </ThemeProvider>
   )
+}
+
+it('the usage card shows the filtered stats beside the balance, without the old summary cards', async () => {
+  await renderDashboard(ROLE.USER)
+
+  const card = await screen.findByRole('region', { name: 'Usage at a glance' })
+  for (const stat of ['Total Count', 'Total Quota', 'Total Tokens']) {
+    expect(within(card).getByRole('group', { name: stat })).toBeVisible()
+  }
+  expect(within(card).getByText('Credit remaining')).toBeVisible()
+  expect(within(card).getByText('Wallet').closest('a')).toHaveAttribute(
+    'href',
+    '/wallet'
+  )
+  expect(
+    within(card).getByRole('combobox', { name: 'Time range' })
+  ).toHaveTextContent('1 Day')
+  expect(
+    screen.queryByRole('button', { name: 'Filter' })
+  ).not.toBeInTheDocument()
+  expect(screen.queryByText('Historical Usage')).not.toBeInTheDocument()
+  expect(screen.queryByText('Request Count')).not.toBeInTheDocument()
+})
+
+it('stat cards show a title and a value with no description line', async () => {
+  await renderDashboard(ROLE.USER)
+
+  const count = await screen.findByRole('group', { name: 'Total Count' })
+  expect(count).toHaveTextContent(/^Total Count0$/)
+  for (const description of [
+    'Statistical count',
+    'Statistical quota',
+    'Statistical tokens',
+    'Requests per minute',
+    'Tokens per minute',
+  ]) {
+    expect(screen.queryByText(description)).not.toBeInTheDocument()
+  }
+})
+
+it.each([
+  { name: 'a user', role: ROLE.USER, siteWide: false },
+  { name: 'an admin', role: ROLE.ADMIN, siteWide: true },
+])(
+  '$name sees the site-wide label on the usage card: $siteWide',
+  async (row) => {
+    await renderDashboard(row.role)
+
+    const card = await screen.findByRole('region', {
+      name: 'Usage at a glance',
+    })
+    expect(within(card).queryByText('All users') !== null).toBe(row.siteWide)
+  }
+)
+
+it('picking a time range from the select reloads the stats for that range with daily buckets', async () => {
+  const user = userEvent.setup()
+  await renderDashboard(ROLE.USER)
+  const select = await screen.findByRole('combobox', { name: 'Time range' })
+  vi.mocked(api.get).mockClear()
+
+  await user.click(select)
+  await user.click(await screen.findByRole('option', { name: '7 Days' }))
+
+  expect(select).toHaveTextContent('7 Days')
+  await waitFor(() =>
+    expect(api.get).toHaveBeenCalledWith(
+      '/api/data/self',
+      expect.objectContaining({
+        params: expect.objectContaining({ default_time: 'day' }),
+      })
+    )
+  )
+  const call = vi
+    .mocked(api.get)
+    .mock.calls.find(([url]) => url === '/api/data/self')
+  const params =
+    (call?.[1] as { params?: Record<string, number> } | undefined)?.params ?? {}
+  expect(params.end_timestamp - params.start_timestamp).toBe(7 * 24 * 3600)
+})
+
+it('the quota distribution chart shows without the call chart or its default', async () => {
+  const user = userEvent.setup()
+  await renderDashboard(ROLE.USER)
 
   expect(await screen.findByText('Quota Distribution')).toBeVisible()
   expect(screen.queryByText('Call Trend')).not.toBeInTheDocument()
@@ -98,4 +177,35 @@ it('model call analytics shows quota distribution without the call chart or its 
   expect(
     within(dialog).queryByText('Default model call chart')
   ).not.toBeInTheDocument()
+})
+
+it('a user gets no analytics tabs and no flow chart', async () => {
+  await renderDashboard(ROLE.USER)
+
+  expect(await screen.findByText('Quota Distribution')).toBeVisible()
+  expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  expect(screen.queryByText('Flow')).not.toBeInTheDocument()
+})
+
+it('an admin switches between model and user analytics while the usage card stays', async () => {
+  const user = userEvent.setup()
+  await renderDashboard(ROLE.ADMIN)
+
+  const tabs = await screen.findAllByRole('tab')
+  expect(tabs.map((tab) => tab.textContent)).toEqual([
+    'Model Call Analytics',
+    'User Analytics',
+  ])
+
+  await user.click(screen.getByRole('tab', { name: 'User Analytics' }))
+
+  expect(screen.getByRole('tab', { name: 'User Analytics' })).toHaveAttribute(
+    'aria-selected',
+    'true'
+  )
+  expect(await screen.findByText('User Consumption Ranking')).toBeVisible()
+  expect(screen.queryByText('Quota Distribution')).not.toBeInTheDocument()
+  expect(
+    screen.getByRole('region', { name: 'Usage at a glance' })
+  ).toBeVisible()
 })

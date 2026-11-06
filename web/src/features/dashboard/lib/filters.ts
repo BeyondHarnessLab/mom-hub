@@ -59,22 +59,6 @@ function isTimeRangePresetDays(value: unknown): value is number {
   return TIME_RANGE_PRESETS.some((preset) => preset.days === value)
 }
 
-export function cleanFilters<T extends Record<string, unknown>>(
-  filters: T
-): Partial<T> {
-  const cleaned: Partial<T> = {}
-  for (const [key, value] of Object.entries(filters)) {
-    if (value === undefined || value === null) continue
-    if (typeof value === 'string') {
-      const trimmed = value.trim()
-      if (trimmed) cleaned[key as keyof T] = trimmed as T[keyof T]
-      continue
-    }
-    cleaned[key as keyof T] = value as T[keyof T]
-  }
-  return cleaned
-}
-
 export function getSavedGranularity(
   override?: TimeGranularity
 ): TimeGranularity {

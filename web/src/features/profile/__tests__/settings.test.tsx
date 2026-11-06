@@ -16,13 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-  within,
-} from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
@@ -268,15 +262,20 @@ describe('notifications a user receives', () => {
     }
   )
 
-  it('a setting stored with webhook shows email as the only method and saves as email', async () => {
+  it('with email as the only method there is no method picker, just the email field', () => {
+    renderNotificationTab(ROLE.USER, { notify_type: 'email' })
+    expect(
+      screen.queryByRole('group', { name: 'Notification Method' })
+    ).not.toBeInTheDocument()
+    expect(screen.queryByText('Notification Method')).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Notification Email')).toBeVisible()
+  })
+
+  it('a setting stored with webhook shows the email field and saves as email', async () => {
     const setting = { ...settings, notify_type: 'webhook' }
     const put = mockSave(ROLE.USER, setting)
     const onUpdate = renderNotificationTab(ROLE.USER, setting)
-    const methods = screen.getByRole('group', { name: 'Notification Method' })
-    expect(within(methods).getAllByRole('button')).toHaveLength(1)
-    expect(
-      within(methods).getByRole('button', { name: 'Email' })
-    ).toHaveAttribute('aria-pressed', 'true')
+    expect(screen.getByLabelText('Notification Email')).toBeVisible()
     expect(screen.queryByLabelText('Webhook URL')).not.toBeInTheDocument()
     await save(onUpdate)
     expect(sentBody(put)).toMatchObject({
@@ -305,7 +304,7 @@ describe('notifications a user receives', () => {
     expect(
       screen.getByRole('switch', { name: 'Channel notifications' })
     ).toBeInTheDocument()
-    expect(screen.getByText('Notification Method')).toBeInTheDocument()
+    expect(screen.getByLabelText('Notification Email')).toBeInTheDocument()
   })
 
   it('an empty threshold shows the site default and saves as the site default', async () => {

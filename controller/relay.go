@@ -17,6 +17,7 @@ import (
 	"github.com/QuantumNous/new-api/middleware"
 	"github.com/QuantumNous/new-api/model"
 	pluginruntime "github.com/QuantumNous/new-api/pkg/jsplugin"
+	"github.com/QuantumNous/new-api/pkg/metrics"
 	perfmetrics "github.com/QuantumNous/new-api/pkg/perf_metrics"
 	"github.com/QuantumNous/new-api/relay"
 	"github.com/QuantumNous/new-api/relay/channel/task/taskcommon"
@@ -213,6 +214,7 @@ func Relay(c *gin.Context, relayFormat types.RelayFormat) {
 		default:
 			newAPIError = relayHandler(c, relayInfo)
 		}
+		metrics.ObserveUpstreamAttempt(channel.Id, newAPIError)
 
 		if newAPIError == nil {
 			service.MarkRequestPolicySuccess(c, relayInfo.StreamStatus)

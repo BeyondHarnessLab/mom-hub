@@ -34,7 +34,7 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   const { t } = useTranslation()
   if (props.loading) {
     return (
-      <div className='grid grid-cols-3 divide-x rounded-lg border'>
+      <div className='surface-sheet grid grid-cols-3 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
         {['balance', 'usage', 'requests'].map((key) => (
           <div key={key} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
             <Skeleton className='h-3.5 w-full' />
@@ -77,7 +77,7 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   ]
 
   return (
-    <div className='grid grid-cols-3 divide-x rounded-lg border'>
+    <div className='surface-sheet grid grid-cols-3 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
       {stats.map((item) => (
         <div key={item.label} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
           <div className='flex items-center gap-1.5 sm:gap-2.5'>
@@ -89,7 +89,7 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
             </div>
           </div>
 
-          <div className='text-foreground mt-1.5 font-mono text-sm font-bold tracking-tight break-all tabular-nums sm:mt-2.5 sm:text-2xl'>
+          <div className='text-foreground metric-figure mt-1.5 text-sm break-all sm:mt-2.5 sm:text-2xl'>
             {item.value}
           </div>
           <div className='text-muted-foreground/60 mt-1 hidden text-xs md:block'>

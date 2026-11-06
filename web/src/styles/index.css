@@ -117,6 +117,9 @@ For commercial licensing, please contact support@quantumnous.com
      * (defined in theme.css, swapped by `[data-theme-font='...']` blocks
      * in theme-presets.css). Defaults to the browser's sans-serif. */
     font-family: var(--font-body);
+    /* The website's Inter setting: open digits, single-storey a, tabular
+     * figures. Serif keeps its own features (theme-presets.css). */
+    font-feature-settings: 'ss01', 'cv11', 'tnum';
   }
 
   :is(h1, h2, h3) {
@@ -263,6 +266,55 @@ For commercial licensing, please contact support@quantumnous.com
   &:hover::-webkit-scrollbar-thumb:hover {
     background-color: color-mix(in oklch, var(--border) 60%, transparent);
   }
+}
+
+/* ── Modeless material layer (default preset) ────────────────────────────
+ * Tokens live in theme.css and are reset for named presets in
+ * theme-presets.css, so each rule here falls back to the upstream look. */
+
+/* Inside a white sheet, "background" means the sheet: tiles, tabs and
+ * dividers that paint bg-background stay white instead of showing the paper
+ * through. Light default preset only; dark and named presets keep their
+ * inset surfaces. */
+:root:not(.dark)
+  body:not([data-theme-preset])
+  :is(
+    [data-slot='card'],
+    [data-slot='dialog-content'],
+    [data-slot='alert-dialog-content'],
+    [data-slot='sheet-content'],
+    [data-slot='popover-content'],
+    .surface-sheet
+  ) {
+  --background: var(--card);
+}
+
+/* The website sets every small uppercase label (eyebrows, numbering,
+ * protocol names) in JetBrains Mono. A `font-*` utility on the element
+ * still wins because this sits in the base layer. */
+@layer base {
+  body:not([data-theme-preset]) .uppercase {
+    font-family: var(--font-label);
+  }
+}
+
+/* Headline figures (balance, usage, counts): Inter with tight tracking and
+ * tabular digits, as the website sets its numbers. */
+@utility metric-figure {
+  font-family: var(--font-body);
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Code is dark glass on the default preset; other presets keep a quiet
+ * tinted panel. */
+@utility code-glass {
+  background: var(
+    --code-glass,
+    color-mix(in oklab, var(--foreground) 3.5%, transparent)
+  );
+  color: var(--code-glass-foreground, var(--muted-foreground));
 }
 
 @utility faded-bottom {
@@ -580,13 +632,15 @@ For commercial licensing, please contact support@quantumnous.com
   }
 
   @media (min-width: 641px) {
+    /* The default preset lifts the sheet and picks up a brand ring, like
+     * the website's contact cards. */
     [data-slot='card']:not([data-card-hover='false']):hover {
       transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgb(0 0 0 / 0.06);
+      box-shadow: var(--sheet-shadow-hover, 0 4px 12px rgb(0 0 0 / 0.06));
     }
 
     .dark [data-slot='card']:not([data-card-hover='false']):hover {
-      box-shadow: 0 4px 12px rgb(0 0 0 / 0.3);
+      box-shadow: var(--sheet-shadow-hover, 0 4px 12px rgb(0 0 0 / 0.3));
     }
   }
 

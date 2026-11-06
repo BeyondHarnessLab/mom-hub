@@ -102,11 +102,12 @@ For commercial licensing, please contact support@quantumnous.com
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Default preset = the Modeless brand (modeless.ai): ink primary, brand blue
- * for focus and selection, warm off-white canvas. Keep in sync with the
- * website's src/index.css. */
+/* Default preset = the Modeless brand (modeless.ai v1.1): ink primary, deep
+ * indigo brand for focus and selection, cool paper canvas with white cards.
+ * Keep in sync with the website's src/app/globals.css. */
 :root {
-  --radius: 0.75rem;
+  /* The website's 6px corner. */
+  --radius: 0.375rem;
   --app-header-height: 3rem;
   /* Static build-channel fallback consumed when JS hasn't booted yet. */
   --app-rev: '2k6e8r7p';
@@ -118,59 +119,70 @@ For commercial licensing, please contact support@quantumnous.com
     'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC',
     sans-serif;
   --font-body: var(--font-ui-sans);
-  --brand: #3f5bd9;
-  --brand-soft: #eef1fc;
+  /* Small uppercase labels: the website's mono, with CJK sans fallbacks so
+   * translated labels don't drop to a CJK monospace face. */
+  --font-label:
+    'JetBrains Mono Variable', 'JetBrains Mono', 'PingFang SC',
+    'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans SC', ui-monospace,
+    monospace;
+  --brand: #272e8c;
+  --brand-soft: color-mix(in oklab, var(--brand) 10%, transparent);
   --brand-foreground: #ffffff;
-  --ink: #15181d;
-  --ink-foreground: #d7dce2;
-  --grad-a: #1d4ed8;
-  --grad-b: #06b6d4;
-  --background: #fbfbfa;
-  --foreground: #14171c;
+  --ink: #0e0f1a;
+  --ink-foreground: #d8dde4;
+  --grad-b: #4f46e5;
+  --grad-l: #818cf8;
+  --background: #f1f1f4;
+  --foreground: var(--ink);
   --card: #ffffff;
-  --card-foreground: #14171c;
+  --card-foreground: var(--ink);
   --popover: #ffffff;
-  --popover-foreground: #14171c;
-  --primary: #14171c;
-  --primary-foreground: #ffffff;
-  --secondary: #f3f4f5;
-  --secondary-foreground: #14171c;
-  --muted: #f3f4f5;
-  --muted-foreground: #646b75;
-  --accent: color-mix(in oklch, var(--primary) 6%, var(--background));
-  --accent-foreground: #14171c;
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--background);
+  /* The website mixes these over transparent; the console keeps them opaque
+   * because muted and secondary also fill sticky headers and overlays. */
+  --secondary: color-mix(in oklab, var(--ink) 4%, var(--background));
+  --secondary-foreground: var(--ink);
+  --muted: color-mix(in oklab, var(--ink) 4%, var(--background));
+  /* Ink at 64%, the website's AA-safe body grey. */
+  --muted-foreground: color-mix(in srgb, var(--ink) 64%, var(--background));
+  --accent: color-mix(in oklab, var(--ink) 5%, var(--background));
+  --accent-foreground: var(--ink);
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --success: oklch(0.596 0.145 163.225);
   --success-foreground: oklch(0.985 0 0);
   --warning: oklch(0.681 0.162 75.834);
   --warning-foreground: oklch(0.145 0 0);
-  --info: #3f5bd9;
+  --info: var(--brand);
   --info-foreground: #ffffff;
   --neutral: oklch(0.708 0 0);
   --neutral-foreground: oklch(0.145 0 0);
-  --border: #e7e8ea;
-  --input: #dcdee1;
-  --ring: #3f5bd9;
-  --chart-1: #3f5bd9;
+  /* The website draws dividers and inputs at ink 16%; the console's dense
+   * tables keep dividers lighter and give inputs the website's weight. */
+  --border: color-mix(in oklab, var(--ink) 11%, transparent);
+  --input: color-mix(in oklab, var(--ink) 16%, transparent);
+  --ring: var(--brand);
+  --chart-1: var(--grad-b);
   --chart-2: #06b6d4;
   --chart-3: #8b5cf6;
   --chart-4: #f59e0b;
   --chart-5: #10b981;
-  --overview-accent-1: #3f5bd9;
-  --overview-accent-2: #06b6d4;
-  --overview-accent-3: #1d4ed8;
-  --sidebar: color-mix(in oklch, var(--foreground) 2%, var(--background));
-  --sidebar-foreground: #14171c;
-  --sidebar-primary: #3f5bd9;
+  --overview-accent-1: var(--grad-b);
+  --overview-accent-2: var(--grad-l);
+  --overview-accent-3: var(--brand);
+  --sidebar: color-mix(in oklab, var(--ink) 2.5%, var(--background));
+  --sidebar-foreground: var(--ink);
+  --sidebar-primary: var(--brand);
   --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: color-mix(in oklch, var(--brand) 10%, var(--background));
-  --sidebar-accent-foreground: #3149b8;
-  --sidebar-border: #e7e8ea;
-  --sidebar-ring: #3f5bd9;
-  --skeleton-base: oklch(0.97 0 0);
-  --skeleton-highlight: oklch(0.985 0 0);
-  --table-row: var(--background);
+  --sidebar-accent: color-mix(in oklab, var(--brand) 9%, var(--background));
+  --sidebar-accent-foreground: var(--brand);
+  --sidebar-border: color-mix(in oklab, var(--ink) 11%, transparent);
+  --sidebar-ring: var(--brand);
+  --skeleton-base: color-mix(in oklab, var(--ink) 5%, var(--background));
+  --skeleton-highlight: color-mix(in oklab, var(--ink) 2%, var(--background));
+  --table-row: var(--card);
   --table-header: color-mix(
     in oklch,
     var(--foreground) 1.5%,
@@ -198,28 +210,77 @@ For commercial licensing, please contact support@quantumnous.com
     var(--foreground) 16%,
     var(--background)
   );
+
+  /* Material layer from the website (globals.css .btn-dark, .material-card,
+   * .code-glass). Only the default preset sets these; theme-presets.css
+   * resets them to `initial` so every use site falls back to the plain
+   * upstream look. */
+  /* Primary key: lit top bevel, dark bottom edge, ink drop shadow; hover
+   * turns it brand indigo with a brand glow. */
+  --key-gloss: linear-gradient(180deg, rgb(255 255 255 / 0.2), transparent 55%);
+  --key-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.22), inset 0 -1px 0 rgb(0 0 0 / 0.4),
+    0 1px 2px rgb(0 0 0 / 0.25),
+    0 10px 20px -10px color-mix(in oklab, var(--ink) 70%, transparent);
+  --key-hover: var(--brand);
+  --key-hover-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.3), inset 0 -1px 0 rgb(0 0 0 / 0.25),
+    0 1px 2px rgb(0 0 0 / 0.2),
+    0 14px 26px -10px color-mix(in oklab, var(--brand) 80%, transparent);
+  /* Fields, outline keys, tables and stat strips are white sheets on the
+   * paper; upstream draws them transparent. */
+  --control-bg: var(--card);
+  --sheet-bg: var(--card);
+  --control-shadow: 0 1px 2px color-mix(in oklab, var(--ink) 6%, transparent);
+  /* A card is a physical sheet: lit top edge, short contact shadow and a
+   * long brand-tinted shadow (toned down from the website's for density). */
+  --sheet-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 1px 2px color-mix(in oklab, var(--ink) 6%, transparent),
+    0 12px 28px -18px color-mix(in oklab, var(--ink) 18%, transparent),
+    0 36px 70px -48px color-mix(in oklab, var(--brand) 35%, transparent);
+  --sheet-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.95),
+    0 0 0 1px color-mix(in oklab, var(--brand) 35%, transparent),
+    0 1px 2px color-mix(in oklab, var(--ink) 6%, transparent),
+    0 14px 30px -16px color-mix(in oklab, var(--ink) 22%, transparent),
+    0 40px 80px -46px color-mix(in oklab, var(--brand) 45%, transparent);
+  /* Code is dark glass: a brand glow in the corner, ink underneath. */
+  --code-glass:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in oklab, var(--brand) 24%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(
+      165deg,
+      color-mix(in oklab, var(--ink) 90%, #fff),
+      var(--ink)
+    );
+  --code-glass-foreground: #d8dde4;
 }
 
 .dark {
   /* Native controls follow the theme; Dark Reader also reads this to detect
      the built-in dark theme. */
   color-scheme: dark;
-  /* Modeless ink canvas; primary inverts to a light button like the
-   * website's CTA band. */
-  --brand: #6d84f0;
-  --brand-soft: #1a2142;
+  /* The website is light-only; dark mode sits on its ink (#0e0f1a, the code
+   * panels' glass) with the light indigo as brand. Primary inverts to a
+   * light key like the website's CTA band. */
+  --brand: #818cf8;
+  --brand-soft: color-mix(in oklab, var(--brand) 14%, transparent);
   --brand-foreground: #ffffff;
-  --background: #0f1114;
+  --background: #0e0f1a;
   --foreground: #eceef1;
-  --card: #16191e;
+  --card: #151622;
   --card-foreground: #eceef1;
-  --popover: #1b1e24;
+  --popover: #1a1b28;
   --popover-foreground: #eceef1;
   --primary: #eceef1;
-  --primary-foreground: #14171c;
-  --secondary: #20242a;
+  --primary-foreground: #0e0f1a;
+  --secondary: #1e1f2c;
   --secondary-foreground: #eceef1;
-  --muted: #1c1f25;
+  --muted: #1a1b27;
   --muted-foreground: #9aa1ab;
   --accent: color-mix(in oklch, var(--primary) 8%, var(--background));
   --accent-foreground: #eceef1;
@@ -229,31 +290,31 @@ For commercial licensing, please contact support@quantumnous.com
   --success-foreground: oklch(0.145 0 0);
   --warning: oklch(0.769 0.188 70.08);
   --warning-foreground: oklch(0.145 0 0);
-  --info: #7b8ff0;
-  --info-foreground: #0f1114;
+  --info: var(--brand);
+  --info-foreground: #0e0f1a;
   --neutral: oklch(0.76 0 0);
   --neutral-foreground: oklch(0.155 0 0);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(1 0 0 / 15%);
-  --ring: #6d84f0;
-  --chart-1: #6d84f0;
+  --ring: var(--brand);
+  --chart-1: var(--brand);
   --chart-2: #22d3ee;
   --chart-3: #a78bfa;
   --chart-4: #fbbf24;
   --chart-5: #34d399;
-  --overview-accent-1: #6d84f0;
-  --overview-accent-2: #22d3ee;
-  --overview-accent-3: #3f5bd9;
-  --sidebar: #0b0d10;
+  --overview-accent-1: var(--brand);
+  --overview-accent-2: #a5b4fc;
+  --overview-accent-3: #4f46e5;
+  --sidebar: #0a0b13;
   --sidebar-foreground: #e4e7eb;
-  --sidebar-primary: #6d84f0;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: color-mix(in oklch, var(--brand) 18%, var(--background));
-  --sidebar-accent-foreground: #c3cdfb;
+  --sidebar-primary: var(--brand);
+  --sidebar-primary-foreground: #0e0f1a;
+  --sidebar-accent: color-mix(in oklab, var(--brand) 16%, var(--background));
+  --sidebar-accent-foreground: #c7d2fe;
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: #6d84f0;
-  --skeleton-base: #1f2329;
-  --skeleton-highlight: #2a2f36;
+  --sidebar-ring: var(--brand);
+  --skeleton-base: #1c1d29;
+  --skeleton-highlight: #262838;
   --table-row: var(--background);
   --table-header: color-mix(in oklch, var(--foreground) 6%, var(--background));
   --table-header-hover: color-mix(
@@ -276,4 +337,30 @@ For commercial licensing, please contact support@quantumnous.com
     var(--foreground) 24%,
     var(--background)
   );
+
+  /* The website's inverted hero: a white key on ink. */
+  --key-gloss: none;
+  --key-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.14), 0 10px 20px -10px rgb(0 0 0 / 0.6);
+  --key-hover: color-mix(in oklab, var(--brand) 22%, #fff);
+  --key-hover-shadow:
+    inset 0 -1px 0 rgb(0 0 0 / 0.14),
+    0 12px 24px -10px color-mix(in oklab, var(--brand) 55%, transparent);
+  --control-bg: initial;
+  --control-shadow: initial;
+  --sheet-bg: initial;
+  --sheet-shadow:
+    inset 0 1px 0 rgb(255 255 255 / 0.05), 0 1px 2px rgb(0 0 0 / 0.4),
+    0 18px 36px -24px rgb(0 0 0 / 0.7);
+  --sheet-shadow-hover:
+    inset 0 1px 0 rgb(255 255 255 / 0.06),
+    0 0 0 1px color-mix(in oklab, var(--brand) 40%, transparent),
+    0 18px 36px -20px rgb(0 0 0 / 0.75);
+  --code-glass:
+    radial-gradient(
+      120% 140% at 0% 0%,
+      color-mix(in oklab, var(--brand) 18%, transparent),
+      transparent 55%
+    ),
+    linear-gradient(165deg, #12131f, #0a0b13);
 }

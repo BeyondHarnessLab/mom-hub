@@ -66,9 +66,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       <main className='relative z-10 flex flex-1 items-center justify-center px-4 pt-4 pb-8'>
         <div
           className={cn(
-            'bg-card w-full max-w-[440px] rounded-[18px] border p-6 sm:p-9',
-            'shadow-[0_1px_2px_rgb(20_23_28/0.04),0_12px_32px_-16px_rgb(20_23_28/0.18)]',
-            'dark:shadow-none',
+            'bg-card w-full max-w-[440px] rounded-2xl border p-6 sm:p-9',
+            'shadow-[var(--sheet-shadow,0_1px_2px_rgb(20_23_28/0.04),0_12px_32px_-16px_rgb(20_23_28/0.18))]',
+            'dark:shadow-[var(--sheet-shadow,none)]',
             '[&_input[data-slot=form-control]]:h-10 [&_form_button[type=submit]]:h-10 [&_form_button[type=submit]]:font-semibold'
           )}
         >

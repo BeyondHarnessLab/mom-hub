@@ -37,6 +37,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { Profile } from '@/features/profile'
 import type { UserProfile } from '@/features/profile/types'
 import { api } from '@/lib/api'
+import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
 
 import { Security } from '../index'
@@ -191,7 +192,6 @@ describe('security page migration', () => {
       'xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.46fr)]'
     )
     const access = screen.getByRole('region', { name: 'Sessions & Access' })
-    expect(within(access).getByText('Access tokens')).toBeVisible()
     expect(
       await within(access).findByText('No active login sessions')
     ).toBeVisible()
@@ -204,6 +204,31 @@ describe('security page migration', () => {
         { name: 'Delete Account' }
       )
     ).toBeVisible()
+  })
+
+  it('a user does not see or request access tokens', async () => {
+    await renderPage()
+    const access = await screen.findByRole('region', {
+      name: 'Sessions & Access',
+    })
+    expect(
+      await within(access).findByText('No active login sessions')
+    ).toBeVisible()
+    expect(within(access).queryByText('Access tokens')).not.toBeInTheDocument()
+    expect(api.get).not.toHaveBeenCalledWith('/api/user/access_tokens')
+  })
+
+  it('an admin sees access tokens under sessions and access', async () => {
+    useAuthStore.getState().auth.setUser({
+      ...profile,
+      role: ROLE.ADMIN,
+      permissions: { sidebar_settings: false },
+    })
+    await renderPage()
+    const access = await screen.findByRole('region', {
+      name: 'Sessions & Access',
+    })
+    expect(await within(access).findByText('Access tokens')).toBeVisible()
   })
 
   it('built-in and custom bindings share one compact responsive grid', async () => {
@@ -260,6 +285,21 @@ describe('security page migration', () => {
     expect(api.get).not.toHaveBeenCalledWith('/api/user/passkey')
     expect(api.get).not.toHaveBeenCalledWith('/api/user/2fa/status')
     expect(api.get).not.toHaveBeenCalledWith('/api/user/sessions')
+  })
+
+  it('Profile does not offer sidebar settings to a user allowed to configure them', async () => {
+    useAuthStore
+      .getState()
+      .auth.setUser({ ...profile, permissions: { sidebar_settings: true } })
+    await renderPage('/profile')
+    await waitFor(() =>
+      expect(
+        screen.getByRole('button', { name: 'Save Settings' })
+      ).toBeVisible()
+    )
+    expect(
+      screen.queryByText('Sidebar Personal Settings')
+    ).not.toBeInTheDocument()
   })
 
   it('a failed profile load offers retry before exposing account actions', async () => {

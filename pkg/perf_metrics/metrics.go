@@ -11,6 +11,7 @@ import (
 
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
+	"github.com/QuantumNous/new-api/pkg/metrics"
 	relaycommon "github.com/QuantumNous/new-api/relay/common"
 	"github.com/QuantumNous/new-api/relaykit/types"
 	"github.com/QuantumNous/new-api/setting/perf_metrics_setting"
@@ -40,15 +41,19 @@ func RecordRelayResult(ctx context.Context, info *relaycommon.RelayInfo, apiErr 
 		return
 	}
 	outcome := ClassifyRelayOutcome(ctx, info, apiErr)
+	now := time.Now()
+	hasTtft := info.IsStream && info.HasSendResponse()
+	var ttft time.Duration
+	if hasTtft {
+		ttft = info.FirstResponseTime.Sub(info.StartTime)
+	}
+	// Prometheus also counts ignored requests, under their own outcome, so
+	// cancellations and rejections stay visible there.
+	metrics.ObserveRelay(info.OriginModelName, string(outcome), now.Sub(info.StartTime), ttft)
 	if outcome == OutcomeIgnored {
 		return
 	}
-	now := time.Now()
-	hasTtft := info.IsStream && info.HasSendResponse()
-	ttftMs := int64(0)
-	if hasTtft {
-		ttftMs = info.FirstResponseTime.Sub(info.StartTime).Milliseconds()
-	}
+	ttftMs := ttft.Milliseconds()
 	latencyMs := now.Sub(info.StartTime).Milliseconds()
 	generationMs := latencyMs
 	if hasTtft {

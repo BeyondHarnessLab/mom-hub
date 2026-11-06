@@ -410,6 +410,19 @@ For commercial licensing, please contact support@quantumnous.com
   --overview-accent-1: var(--chart-1);
   --overview-accent-2: var(--chart-2);
   --overview-accent-3: var(--chart-3);
+  /* The Modeless material layer (theme.css) belongs to the default preset.
+   * `initial` makes each var() fall back to the plain upstream style. */
+  --key-gloss: initial;
+  --key-shadow: initial;
+  --key-hover: initial;
+  --key-hover-shadow: initial;
+  --control-bg: initial;
+  --control-shadow: initial;
+  --sheet-bg: initial;
+  --sheet-shadow: initial;
+  --sheet-shadow-hover: initial;
+  --code-glass: initial;
+  --code-glass-foreground: initial;
 }
 
 /* ── Semantic surface bridge ──────────────────────────────────────────── */

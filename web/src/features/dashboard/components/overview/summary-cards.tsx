@@ -253,12 +253,12 @@ export function SummaryCards() {
   })
 
   return (
-    <div className='bg-card overflow-hidden rounded-2xl border shadow-xs'>
+    <div className='bg-card surface-sheet overflow-hidden rounded-2xl border shadow-[var(--sheet-shadow,0_1px_2px_0_rgb(0_0_0/0.05))]'>
       <div className='grid xl:grid-cols-[minmax(0,1fr)_19rem]'>
         <div className='flex flex-col gap-2.5 p-3 sm:gap-3 sm:p-5'>
           <div className='flex flex-wrap items-start justify-between gap-3'>
             <div className='flex flex-col gap-1'>
-              <h3 className='text-sm font-semibold sm:text-base'>
+              <h3 className='text-base font-medium tracking-[-0.025em] sm:text-lg'>
                 {t('Usage at a glance')}
               </h3>
               <p className='text-muted-foreground text-xs sm:text-sm'>
@@ -305,7 +305,7 @@ export function SummaryCards() {
               </span>
             </div>
 
-            <div className='font-mono text-xl font-semibold tracking-tight sm:text-2xl'>
+            <div className='metric-figure text-xl sm:text-2xl'>
               {formatQuota(remainQuota)}
             </div>
 

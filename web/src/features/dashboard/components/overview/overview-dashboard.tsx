@@ -370,7 +370,7 @@ function RequestPreview(props: {
         )}
       </div>
 
-      <div className='bg-foreground/[0.035] my-3 rounded-xl p-3 font-mono text-xs'>
+      <div className='code-glass my-3 rounded-xl p-3 font-mono text-xs'>
         <div className='mb-2 flex items-center gap-1.5'>
           <span className='bg-destructive size-2 rounded-full' />
           <span className='bg-warning size-2 rounded-full' />
@@ -378,11 +378,7 @@ function RequestPreview(props: {
         </div>
         <div className='flex flex-col gap-1 overflow-hidden'>
           {previewLines.map((line) => (
-            <code
-              key={line}
-              className='text-muted-foreground truncate'
-              title={line}
-            >
+            <code key={line} className='truncate' title={line}>
               {line}
             </code>
           ))}
@@ -640,7 +636,7 @@ export function OverviewDashboard() {
           <div id={setupGuideId} hidden={!setupGuideExpanded}>
             {setupGuideExpanded && (
               <CardStaggerContainer className='grid items-stretch gap-4 xl:grid-cols-[minmax(0,1fr)_22rem]'>
-                <CardStaggerItem className='bg-card h-full overflow-hidden rounded-2xl border shadow-xs'>
+                <CardStaggerItem className='bg-card surface-sheet h-full overflow-hidden rounded-2xl border shadow-[var(--sheet-shadow,0_1px_2px_0_rgb(0_0_0/0.05))]'>
                   <div className='relative h-full overflow-hidden p-4 sm:p-5'>
                     <SetupGuideBackdrop />
                     <div className='relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_21rem]'>
@@ -654,7 +650,7 @@ export function OverviewDashboard() {
                               />
                               {t('Get started')}
                             </div>
-                            <h3 className='text-xl font-semibold tracking-tight sm:text-2xl'>
+                            <h3 className='text-xl font-normal tracking-[-0.035em] sm:text-2xl'>
                               {t('Build on your API gateway in minutes')}
                             </h3>
                             <p className='text-muted-foreground max-w-xl text-sm leading-relaxed'>
@@ -701,13 +697,13 @@ export function OverviewDashboard() {
                   </div>
                 </CardStaggerItem>
 
-                <CardStaggerItem className='bg-card h-full rounded-2xl border p-4 shadow-xs sm:p-5'>
+                <CardStaggerItem className='bg-card surface-sheet h-full rounded-2xl border p-4 shadow-[var(--sheet-shadow,0_1px_2px_0_rgb(0_0_0/0.05))] sm:p-5'>
                   <div className='flex h-full flex-col gap-4'>
                     <div className='flex flex-col gap-1'>
                       <div className='text-muted-foreground text-xs font-medium tracking-wider uppercase'>
                         {t('Recommended actions')}
                       </div>
-                      <h3 className='text-lg font-semibold tracking-tight'>
+                      <h3 className='text-lg font-medium tracking-[-0.025em]'>
                         {t('Keep the platform ready')}
                       </h3>
                     </div>
@@ -723,7 +719,7 @@ export function OverviewDashboard() {
           </div>
           {!setupGuideExpanded && !setupComplete && (
             <CardStaggerContainer>
-              <CardStaggerItem className='bg-card overflow-hidden rounded-2xl border shadow-xs'>
+              <CardStaggerItem className='bg-card surface-sheet overflow-hidden rounded-2xl border shadow-[var(--sheet-shadow,0_1px_2px_0_rgb(0_0_0/0.05))]'>
                 <div className='relative overflow-hidden px-4 py-3 sm:px-5'>
                   <SetupGuideBackdrop compact />
                   <div className='relative flex flex-wrap items-center justify-between gap-3'>

@@ -55,12 +55,6 @@ export const CONSUMPTION_DISTRIBUTION_CHART_OPTIONS = [
   { value: 'area', labelKey: 'Area Chart' },
 ] as const
 
-export const MODEL_ANALYTICS_CHART_OPTIONS = [
-  { value: 'trend', labelKey: 'Call Trend' },
-  { value: 'proportion', labelKey: 'Call Count Distribution' },
-  { value: 'top', labelKey: 'Call Count Ranking' },
-] as const
-
 export const EMPTY_DASHBOARD_FILTERS: DashboardFilters = {
   start_timestamp: undefined,
   end_timestamp: undefined,

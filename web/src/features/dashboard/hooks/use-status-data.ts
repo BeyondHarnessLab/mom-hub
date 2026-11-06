@@ -18,7 +18,7 @@ For commercial licensing, please contact support@quantumnous.com
 */
 import { useStatus } from '@/hooks/use-status'
 
-import type { AnnouncementItem, ApiInfoItem, FAQItem } from '../types'
+import type { AnnouncementItem, ApiInfoItem } from '../types'
 
 /**
  * Get specific list from status data
@@ -49,23 +49,4 @@ export function useAnnouncements() {
     'announcements_enabled',
     'announcements'
   )
-}
-
-/**
- * Get FAQ list
- */
-export function useFAQ() {
-  return useStatusData<FAQItem>('faq_enabled', 'faq')
-}
-
-/**
- * Get dashboard content panel visibility. The overview no longer shows the
- * API info, announcements and uptime panels, whatever their settings say.
- */
-export function useDashboardContentVisibility() {
-  const { status } = useStatus()
-
-  return {
-    faq: Boolean(status) && status?.faq_enabled !== false,
-  }
 }

@@ -24,7 +24,6 @@ import {
   FileText,
   FlaskConical,
   Key,
-  LayoutDashboard,
   ListTodo,
   MessageSquare,
   PlugZap,
@@ -77,11 +76,6 @@ export function useSidebarData(): SidebarData {
             title: t('Overview'),
             url: '/dashboard/overview',
             icon: Activity,
-          },
-          {
-            title: t('Dashboard'),
-            url: '/dashboard/models',
-            icon: LayoutDashboard,
           },
           {
             title: t('API Keys'),

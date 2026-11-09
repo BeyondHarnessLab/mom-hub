@@ -228,3 +228,16 @@ describe('task log sidebar entry', () => {
     expect(entry && checkIsActive('/usage-logs/drawing', entry)).toBe(true)
   })
 })
+
+describe('dashboard sidebar entry', () => {
+  it('the console links to the overview only, with no separate Dashboard page', () => {
+    const { result } = sidebarFor({ console: { enabled: true, detail: true } })
+    const items =
+      result.current.find((group) => group.id === 'general')?.items ?? []
+
+    expect(items).toContainEqual(
+      expect.objectContaining({ title: 'Overview', url: '/dashboard/overview' })
+    )
+    expect(items.map((item) => item.title)).not.toContain('Dashboard')
+  })
+})

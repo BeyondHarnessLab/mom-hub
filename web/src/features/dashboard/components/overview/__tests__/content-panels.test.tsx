@@ -24,16 +24,7 @@ import {
   RouterProvider,
 } from '@tanstack/react-router'
 import { cleanup, render, screen } from '@testing-library/react'
-import {
-  afterAll,
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { api } from '@/lib/api'
 import { ROLE } from '@/lib/roles'
@@ -42,31 +33,10 @@ import { useSystemConfigStore } from '@/stores/system-config-store'
 
 import { OverviewDashboard } from '../overview-dashboard'
 
+// VChart draws on a canvas, which jsdom does not provide.
+vi.mock('@visactor/react-vchart', () => ({ VChart: () => null }))
+
 let client: QueryClient
-const originalGetAnimations = Object.getOwnPropertyDescriptor(
-  HTMLElement.prototype,
-  'getAnimations'
-)
-
-// The FAQ scroll area reads element animations, which jsdom does not provide.
-beforeAll(() => {
-  Object.defineProperty(HTMLElement.prototype, 'getAnimations', {
-    configurable: true,
-    value: () => [],
-  })
-})
-
-afterAll(() => {
-  if (originalGetAnimations) {
-    Object.defineProperty(
-      HTMLElement.prototype,
-      'getAnimations',
-      originalGetAnimations
-    )
-    return
-  }
-  Reflect.deleteProperty(HTMLElement.prototype, 'getAnimations')
-})
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -136,11 +106,15 @@ describe('overview content panels', () => {
     { name: 'a user', role: ROLE.USER },
     { name: 'an admin', role: ROLE.ADMIN },
   ])(
-    '$name sees the FAQ but not API info, announcements or uptime when all are enabled',
+    '$name sees no FAQ, API info, announcements or uptime even when all are enabled',
     async (row) => {
       await renderOverview(row.role)
 
-      expect(await screen.findByText('How do I top up?')).toBeVisible()
+      // The curl example uses the configured API route once status loads.
+      expect(
+        await screen.findByText(/api\.example\.com\/v1\/chat\/completions/)
+      ).toBeVisible()
+      expect(screen.queryByText('How do I top up?')).not.toBeInTheDocument()
       expect(screen.queryByText('API Info')).not.toBeInTheDocument()
       expect(screen.queryByText('Maintenance tonight')).not.toBeInTheDocument()
       expect(screen.queryByText('Uptime')).not.toBeInTheDocument()

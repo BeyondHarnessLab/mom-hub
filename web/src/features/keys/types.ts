@@ -94,13 +94,7 @@ export interface ApiKeyFormData {
   allow_ips: string
   allow_user_quota_query: boolean
   group: string
-  auto_groups: string[]
   cross_group_retry: boolean
-}
-
-export interface TokenAutoGroupsConfig {
-  groups: string[]
-  max_count: number
 }
 
 // ============================================================================

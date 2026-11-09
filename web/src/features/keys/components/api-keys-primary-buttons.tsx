@@ -38,6 +38,7 @@ import {
 } from '@/components/ui/popover'
 import { useApiInfo } from '@/features/dashboard/hooks/use-status-data'
 import { useStatus } from '@/hooks/use-status'
+import { getApiBaseUrl } from '@/lib/api-base-url'
 
 import { useApiKeys } from './api-keys-provider'
 
@@ -46,16 +47,15 @@ export function ApiKeysPrimaryButtons() {
   const { setOpen } = useApiKeys()
   const { status, loading } = useStatus()
   const { items } = useApiInfo()
-  const serverAddress =
-    (typeof status?.server_address === 'string' &&
-      status.server_address.trim()) ||
-    ''
+  const configuredAddress = getApiBaseUrl(status, '')
   const addresses = items.length
     ? items
     : [
         {
-          url: serverAddress || window.location.origin,
-          route: serverAddress ? t('Default API address') : t('Current domain'),
+          url: configuredAddress || window.location.origin,
+          route: configuredAddress
+            ? t('Default API address')
+            : t('Current domain'),
           description: '',
         },
       ]

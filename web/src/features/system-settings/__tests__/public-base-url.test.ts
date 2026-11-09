@@ -17,12 +17,13 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import assert from 'node:assert/strict'
+
 import { describe, test } from 'vitest'
 
-import { isValidTaskPublicAddress } from '../general/task-public-address'
+import { isValidPublicBaseUrl } from '../general/public-base-url'
 
-describe('async task public address', () => {
-  test('allows an empty fallback or an absolute HTTP(S) media base URL', () => {
+describe('public base URL', () => {
+  test('allows an empty fallback or an absolute HTTP(S) base URL', () => {
     for (const value of [
       '',
       'https://media.example.com',
@@ -30,7 +31,7 @@ describe('async task public address', () => {
       'http://127.0.0.1:8080/nginx/tasks',
       'http://localhost:3000/media',
     ]) {
-      assert.equal(isValidTaskPublicAddress(value), true, value)
+      assert.equal(isValidPublicBaseUrl(value), true, value)
     }
   })
 
@@ -48,7 +49,7 @@ describe('async task public address', () => {
       'https:\\\\media.example.com\\tasks',
       'https://',
     ]) {
-      assert.equal(isValidTaskPublicAddress(value), false, value)
+      assert.equal(isValidPublicBaseUrl(value), false, value)
     }
   })
 })

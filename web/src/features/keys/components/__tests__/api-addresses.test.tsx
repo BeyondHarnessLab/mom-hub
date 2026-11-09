@@ -115,10 +115,19 @@ it.each([
   {
     status: {
       api_info: [],
+      server_address: 'https://console.example.com',
+      api_address: 'https://api.example.com',
+    },
+    label: 'Default API address',
+    url: 'https://api.example.com',
+  },
+  {
+    status: {
+      api_info: [],
       server_address: 'https://gateway.example.com/proxy/',
     },
     label: 'Default API address',
-    url: 'https://gateway.example.com/proxy/',
+    url: 'https://gateway.example.com/proxy',
   },
   {
     status: { api_info: [] },

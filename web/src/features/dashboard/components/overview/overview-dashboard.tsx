@@ -42,14 +42,15 @@ import { IconBadge } from '@/components/ui/icon-badge'
 import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
+import { useStatus } from '@/hooks/use-status'
 import { getUserModels } from '@/lib/api'
+import { getApiBaseUrl } from '@/lib/api-base-url'
 import { handleServerError } from '@/lib/handle-server-error'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/auth-store'
 
-import { useApiInfo } from '../../hooks/use-status-data'
 import { DashboardAnalytics } from './dashboard-analytics'
 import { PerformanceHealthPanel } from './performance-health-panel'
 
@@ -268,7 +269,7 @@ export function OverviewDashboard() {
   const { t } = useTranslation()
   const setupGuideId = useId()
   const user = useAuthStore((state) => state.auth.user)
-  const { items: apiInfoItems } = useApiInfo()
+  const { status } = useStatus()
   const [manualSetupGuideExpanded, setManualSetupGuideExpanded] = useState<
     boolean | null
   >(() => getSavedSetupGuideExpanded())
@@ -332,7 +333,7 @@ export function OverviewDashboard() {
     const model = modelsQuery.data?.[0] ?? 'gpt-4o-mini'
 
     return {
-      endpoint: normalizeEndpoint(apiInfoItems[0]?.url),
+      endpoint: normalizeEndpoint(getApiBaseUrl(status)),
       model,
       keyId: preferredKey?.id,
       displayKey: preferredKey
@@ -340,7 +341,7 @@ export function OverviewDashboard() {
         : 'sk-...',
       ready: Boolean(preferredKey?.id && model),
     }
-  }, [apiInfoItems, modelsQuery.data, preferredKey])
+  }, [modelsQuery.data, preferredKey, status])
 
   const setupComplete = startSteps.every((step) => step.completed)
   const setupStatusReady = apiKeysQuery.isFetched && Boolean(user)

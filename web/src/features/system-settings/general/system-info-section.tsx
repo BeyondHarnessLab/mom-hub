@@ -44,12 +44,13 @@ import { SettingsPageFormActions } from '../components/settings-page-context'
 import { SettingsSection } from '../components/settings-section'
 import { useSettingsForm } from '../hooks/use-settings-form'
 import { useUpdateOption } from '../hooks/use-update-option'
-import { isValidTaskPublicAddress } from './task-public-address'
+import { isValidPublicBaseUrl } from './public-base-url'
 
 const _systemInfoSchema = z.object({
   SystemName: z.string().min(1),
   ServerAddress: z.string().optional(),
-  TaskPublicAddress: z.string().refine(isValidTaskPublicAddress),
+  ApiAddress: z.string().refine(isValidPublicBaseUrl),
+  TaskPublicAddress: z.string().refine(isValidPublicBaseUrl),
   Logo: z.string().url().optional().or(z.literal('')),
   Footer: z.string().optional(),
   About: z.string().optional(),
@@ -81,6 +82,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
   const normalizedDefaults: SystemInfoFormValues = {
     SystemName: normalizeValue(defaultValues.SystemName),
     ServerAddress: normalizeValue(defaultValues.ServerAddress),
+    ApiAddress: normalizeValue(defaultValues.ApiAddress),
     TaskPublicAddress: normalizeValue(defaultValues.TaskPublicAddress),
     Logo: normalizeValue(defaultValues.Logo),
     Footer: normalizeValue(defaultValues.Footer),
@@ -100,7 +102,13 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       error: () => t('System name is required'),
     }),
     ServerAddress: z.string().optional(),
-    TaskPublicAddress: z.string().refine(isValidTaskPublicAddress, {
+    ApiAddress: z.string().refine(isValidPublicBaseUrl, {
+      error: () =>
+        t(
+          'Enter an absolute HTTP(S) URL without credentials, query parameters, or fragments'
+        ),
+    }),
+    TaskPublicAddress: z.string().refine(isValidPublicBaseUrl, {
       error: () =>
         t(
           'Enter an absolute HTTP(S) URL without credentials, query parameters, or fragments'
@@ -130,7 +138,11 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
       onSubmit: async (_data, changedFields) => {
         for (const [key, value] of Object.entries(changedFields)) {
           let v = normalizeValue(value)
-          if (key === 'ServerAddress' || key === 'TaskPublicAddress') {
+          if (
+            key === 'ServerAddress' ||
+            key === 'ApiAddress' ||
+            key === 'TaskPublicAddress'
+          ) {
             v = v.replace(/\/+$/, '')
           }
           await updateOption.mutateAsync({
@@ -185,6 +197,25 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                     <FormDescription>
                       {t(
                         'The public URL of your server, used for OAuth callbacks, webhooks, and other external integrations'
+                      )}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name='ApiAddress'
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>{t('API Address')}</FormLabel>
+                    <FormControl>
+                      <Input placeholder='https://api.example.com' {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      {t(
+                        'Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.'
                       )}
                     </FormDescription>
                     <FormMessage />

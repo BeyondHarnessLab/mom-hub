@@ -45,6 +45,7 @@ vi.mock('@visactor/react-vchart', () => ({ VChart: () => null }))
 
 let client: QueryClient
 let keyLookupError: Error | null
+let statusOverrides: Record<string, unknown>
 
 beforeEach(() => {
   window.localStorage.clear()
@@ -61,6 +62,7 @@ beforeEach(() => {
     defaultOptions: { queries: { retry: false } },
   })
   keyLookupError = null
+  statusOverrides = {}
   vi.spyOn(api, 'get').mockImplementation(async (url) => {
     switch (url) {
       case '/api/token/?p=1&size=10':
@@ -81,6 +83,7 @@ beforeEach(() => {
               announcements_enabled: false,
               faq_enabled: false,
               uptime_kuma_enabled: false,
+              ...statusOverrides,
             },
           },
         }
@@ -157,6 +160,23 @@ describe('overview setup guide', () => {
     ]) {
       expect(screen.queryByText(text)).not.toBeInTheDocument()
     }
+  })
+
+  it('builds the curl example from the API Address, not the Server Address', async () => {
+    const user = userEvent.setup()
+    statusOverrides = {
+      server_address: 'https://console.example.com',
+      api_address: 'https://api.example.com/',
+    }
+    await renderOverview()
+    await user.click(await screen.findByRole('button', { name: 'Setup guide' }))
+
+    const panel = screen.getByRole('region', { name: 'Setup guide' })
+    expect(
+      await within(panel).findByText(
+        'curl https://api.example.com/v1/chat/completions \\'
+      )
+    ).toBeVisible()
   })
 
   it('toggles the guide from the keyboard while focus stays on the header toggle', async () => {

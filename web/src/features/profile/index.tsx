@@ -16,19 +16,23 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Main } from '@/components/layout'
+import { useTranslation } from 'react-i18next'
+
+import { SectionPageLayout } from '@/components/layout'
 import {
   CardStaggerContainer,
   CardStaggerItem,
 } from '@/components/page-transition'
+import { Skeleton } from '@/components/ui/skeleton'
 import { useStatus } from '@/hooks/use-status'
-import { cn } from '@/lib/utils'
 
 import { CheckinCalendarCard } from './components/checkin-calendar-card'
-import { ProfileCard } from './components/profile-card'
+import { ProfileHeader } from './components/profile-header'
+import { ProfileSettings } from './components/profile-settings'
 import { useProfile } from './hooks'
 
 export function Profile() {
+  const { t } = useTranslation()
   const { profile, loading, refreshProfile } = useProfile()
   const { status } = useStatus()
 
@@ -42,28 +46,34 @@ export function Profile() {
   const quotaRemindThreshold = status?.quota_remind_threshold ?? 0
 
   return (
-    <Main>
-      <div className='min-h-0 flex-1 overflow-auto px-3 py-3 sm:px-4 sm:py-6'>
-        <CardStaggerContainer
-          className={cn(
-            'mx-auto grid w-full gap-4 sm:gap-6',
-            checkinEnabled
-              ? 'max-w-7xl xl:grid-cols-[minmax(0,1fr)_minmax(360px,0.46fr)] xl:items-start'
-              : 'max-w-4xl'
-          )}
-        >
+    <SectionPageLayout>
+      <SectionPageLayout.Title>{t('Profile')}</SectionPageLayout.Title>
+      <SectionPageLayout.Content>
+        <CardStaggerContainer className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-2 pb-6'>
           <CardStaggerItem>
-            <ProfileCard
-              profile={profile}
-              loading={loading}
-              onProfileUpdate={refreshProfile}
-              quotaRemindEnabled={quotaRemindEnabled}
-              quotaRemindThreshold={quotaRemindThreshold}
-            />
+            <ProfileHeader profile={profile} loading={loading} />
           </CardStaggerItem>
 
+          {loading && (
+            <CardStaggerItem className='flex flex-col gap-8'>
+              <Skeleton className='h-36 w-full rounded-xl' />
+              <Skeleton className='h-48 w-full rounded-xl' />
+            </CardStaggerItem>
+          )}
+
+          {!loading && profile && (
+            <CardStaggerItem>
+              <ProfileSettings
+                profile={profile}
+                onUpdate={refreshProfile}
+                quotaRemindEnabled={quotaRemindEnabled}
+                quotaRemindThreshold={quotaRemindThreshold}
+              />
+            </CardStaggerItem>
+          )}
+
           {checkinEnabled && (
-            <CardStaggerItem className='xl:sticky xl:top-6'>
+            <CardStaggerItem>
               <CheckinCalendarCard
                 checkinEnabled={checkinEnabled}
                 turnstileEnabled={turnstileEnabled}
@@ -72,7 +82,7 @@ export function Profile() {
             </CardStaggerItem>
           )}
         </CardStaggerContainer>
-      </div>
-    </Main>
+      </SectionPageLayout.Content>
+    </SectionPageLayout>
   )
 }

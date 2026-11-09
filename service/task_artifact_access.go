@@ -65,29 +65,31 @@ func VerifyTaskArtifactAccess(access, taskID, artifactKey string) bool {
 	return hmac.Equal(actualSignature, mac.Sum(nil))
 }
 
-// ValidateTaskArtifactBaseURL validates configuration syntax only. It
-// deliberately performs no DNS lookup or reachability probe.
-func ValidateTaskArtifactBaseURL(raw string) error {
+// ValidatePublicBaseURL checks a configured public base URL (TaskPublicAddress,
+// ApiAddress): an absolute http(s) URL with a host and no userinfo, query or
+// fragment. It validates configuration syntax only and deliberately performs
+// no DNS lookup or reachability probe.
+func ValidatePublicBaseURL(raw string) error {
 	trimmed := strings.TrimSpace(raw)
 	if trimmed == "" {
-		return errors.New("task artifact base URL is empty")
+		return errors.New("public base URL is empty")
 	}
 	if raw != trimmed {
-		return errors.New("task artifact base URL must not contain surrounding whitespace")
+		return errors.New("public base URL must not contain surrounding whitespace")
 	}
 	raw = trimmed
 	parsed, err := url.Parse(raw)
 	if err != nil || parsed == nil {
-		return errors.New("task artifact base URL is invalid")
+		return errors.New("public base URL is invalid")
 	}
 	if !strings.EqualFold(parsed.Scheme, "http") && !strings.EqualFold(parsed.Scheme, "https") {
-		return errors.New("task artifact base URL must use http or https")
+		return errors.New("public base URL must use http or https")
 	}
 	if parsed.Host == "" || parsed.User != nil || parsed.Opaque != "" {
-		return errors.New("task artifact base URL must contain a host and no userinfo")
+		return errors.New("public base URL must contain a host and no userinfo")
 	}
 	if parsed.RawQuery != "" || parsed.ForceQuery || parsed.Fragment != "" || strings.Contains(raw, "#") {
-		return errors.New("task artifact base URL must not contain a query or fragment")
+		return errors.New("public base URL must not contain a query or fragment")
 	}
 	return nil
 }
@@ -107,7 +109,7 @@ func BuildTaskArtifactContentURL(taskID, artifactKey string) (string, error) {
 	if baseAddress == "" {
 		baseAddress = strings.TrimSpace(system_setting.ServerAddress)
 	}
-	if err := ValidateTaskArtifactBaseURL(baseAddress); err != nil {
+	if err := ValidatePublicBaseURL(baseAddress); err != nil {
 		return "", err
 	}
 	baseURL, err := url.Parse(baseAddress)

@@ -76,13 +76,13 @@ func TestBuildTaskArtifactContentURLFallsBackOnlyToServerAddress(t *testing.T) {
 	assert.Error(t, err)
 }
 
-func TestValidateTaskArtifactBaseURLOnlyAcceptsSafeAbsoluteHTTPURLs(t *testing.T) {
+func TestValidatePublicBaseURLOnlyAcceptsSafeAbsoluteHTTPURLs(t *testing.T) {
 	for _, valid := range []string{
 		"http://localhost:3000",
 		"https://gateway.example",
 		"https://gateway.example/prefix/path/",
 	} {
-		assert.NoError(t, ValidateTaskArtifactBaseURL(valid), valid)
+		assert.NoError(t, ValidatePublicBaseURL(valid), valid)
 	}
 	for _, invalid := range []string{
 		"",
@@ -94,6 +94,6 @@ func TestValidateTaskArtifactBaseURLOnlyAcceptsSafeAbsoluteHTTPURLs(t *testing.T
 		" https://gateway.example",
 		"https://gateway.example ",
 	} {
-		assert.Error(t, ValidateTaskArtifactBaseURL(invalid), invalid)
+		assert.Error(t, ValidatePublicBaseURL(invalid), invalid)
 	}
 }

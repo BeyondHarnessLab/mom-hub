@@ -215,7 +215,7 @@ export function SystemInfoSection({ defaultValues }: SystemInfoSectionProps) {
                     </FormControl>
                     <FormDescription>
                       {t(
-                        'Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.'
+                        'Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. Console pages opened on this domain redirect to Server Address, which OAuth callbacks and payment returns keep using.'
                       )}
                     </FormDescription>
                     <FormMessage />

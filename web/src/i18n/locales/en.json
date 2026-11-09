@@ -846,7 +846,7 @@
     "Base URL is required for this channel type": "Base URL is required for this channel type",
     "Base URL is required when an advanced route uses an upstream path": "Base URL is required when an advanced route uses an upstream path",
     "Base URL of your Uptime Kuma instance": "Base URL of your Uptime Kuma instance",
-    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.": "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.",
+    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. Console pages opened on this domain redirect to Server Address, which OAuth callbacks and payment returns keep using.": "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. Console pages opened on this domain redirect to Server Address, which OAuth callbacks and payment returns keep using.",
     "Basic Authentication": "Basic Authentication",
     "Basic Configuration": "Basic Configuration",
     "Basic Info": "Basic Info",

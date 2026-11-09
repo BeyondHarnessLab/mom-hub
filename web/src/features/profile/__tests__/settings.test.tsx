@@ -23,7 +23,7 @@ import { api } from '@/lib/api'
 import { ROLE } from '@/lib/roles'
 
 import { updateUserSettings } from '../api'
-import { NotificationTab } from '../components/tabs/notification-tab'
+import { ProfileSettings } from '../components/profile-settings'
 import type { UserProfile } from '../types'
 
 const profile: UserProfile = {
@@ -178,7 +178,7 @@ describe('user settings saves across profile and security', () => {
       .spyOn(api, 'put')
       .mockResolvedValue({ data: { success: true } })
     render(
-      <NotificationTab
+      <ProfileSettings
         profile={{ ...profile, setting: JSON.stringify(settings) }}
         onUpdate={onUpdate}
         quotaRemindEnabled
@@ -203,14 +203,14 @@ describe('user settings saves across profile and security', () => {
 })
 
 describe('notifications a user receives', () => {
-  function renderNotificationTab(
+  function renderProfileSettings(
     role: number,
     setting: Record<string, unknown>,
     quotaRemindEnabled = true
   ) {
     const onUpdate = vi.fn()
     render(
-      <NotificationTab
+      <ProfileSettings
         profile={{ ...profile, role, setting: JSON.stringify(setting) }}
         onUpdate={onUpdate}
         quotaRemindEnabled={quotaRemindEnabled}
@@ -242,7 +242,7 @@ describe('notifications a user receives', () => {
   ])(
     'a $name who never chose sees the reminder on and the channel switch as $channel',
     (row) => {
-      renderNotificationTab(row.role, { notify_type: 'email' })
+      renderProfileSettings(row.role, { notify_type: 'email' })
       expect(
         screen.getByRole('switch', { name: 'Low balance reminder' })
       ).toBeChecked()
@@ -263,7 +263,7 @@ describe('notifications a user receives', () => {
   )
 
   it('with email as the only method there is no method picker, just the email field', () => {
-    renderNotificationTab(ROLE.USER, { notify_type: 'email' })
+    renderProfileSettings(ROLE.USER, { notify_type: 'email' })
     expect(
       screen.queryByRole('group', { name: 'Notification Method' })
     ).not.toBeInTheDocument()
@@ -274,7 +274,7 @@ describe('notifications a user receives', () => {
   it('a setting stored with webhook shows the email field and saves as email', async () => {
     const setting = { ...settings, notify_type: 'webhook' }
     const put = mockSave(ROLE.USER, setting)
-    const onUpdate = renderNotificationTab(ROLE.USER, setting)
+    const onUpdate = renderProfileSettings(ROLE.USER, setting)
     expect(screen.getByLabelText('Notification Email')).toBeVisible()
     expect(screen.queryByLabelText('Webhook URL')).not.toBeInTheDocument()
     await save(onUpdate)
@@ -286,7 +286,7 @@ describe('notifications a user receives', () => {
   })
 
   it('a user on a site with reminders off sees one line instead of notification settings', () => {
-    renderNotificationTab(ROLE.USER, { notify_type: 'email' }, false)
+    renderProfileSettings(ROLE.USER, { notify_type: 'email' }, false)
     expect(
       screen.getByText('No notifications are available to you right now')
     ).toBeInTheDocument()
@@ -297,7 +297,7 @@ describe('notifications a user receives', () => {
   })
 
   it('an admin on a site with reminders off keeps only the administrator notifications', () => {
-    renderNotificationTab(ROLE.ADMIN, { notify_type: 'email' }, false)
+    renderProfileSettings(ROLE.ADMIN, { notify_type: 'email' }, false)
     expect(
       screen.queryByRole('switch', { name: 'Low balance reminder' })
     ).not.toBeInTheDocument()
@@ -309,7 +309,7 @@ describe('notifications a user receives', () => {
 
   it('an empty threshold shows the site default and saves as the site default', async () => {
     const put = mockSave(ROLE.USER, { notify_type: 'email' })
-    const onUpdate = renderNotificationTab(ROLE.USER, { notify_type: 'email' })
+    const onUpdate = renderProfileSettings(ROLE.USER, { notify_type: 'email' })
     const threshold = screen.getByRole('spinbutton', {
       name: 'Reminder threshold (USD)',
     })
@@ -325,7 +325,7 @@ describe('notifications a user receives', () => {
   it('an untouched threshold is saved as stored, in quota units', async () => {
     const setting = { notify_type: 'email', quota_warning_threshold: 1234 }
     const put = mockSave(ROLE.USER, setting)
-    const onUpdate = renderNotificationTab(ROLE.USER, setting)
+    const onUpdate = renderProfileSettings(ROLE.USER, setting)
     expect(
       screen.getByRole('spinbutton', { name: 'Reminder threshold (USD)' })
     ).toHaveValue(0.002468)
@@ -335,7 +335,7 @@ describe('notifications a user receives', () => {
 
   it('turning the reminder off hides its threshold and saves the switch', async () => {
     const put = mockSave(ROLE.USER, { notify_type: 'email' })
-    const onUpdate = renderNotificationTab(ROLE.USER, { notify_type: 'email' })
+    const onUpdate = renderProfileSettings(ROLE.USER, { notify_type: 'email' })
     fireEvent.click(
       screen.getByRole('switch', { name: 'Low balance reminder' })
     )
@@ -348,7 +348,7 @@ describe('notifications a user receives', () => {
 
   it('switches root never touched stay unset when it saves', async () => {
     const put = mockSave(ROLE.SUPER_ADMIN, { notify_type: 'email' })
-    const onUpdate = renderNotificationTab(ROLE.SUPER_ADMIN, {
+    const onUpdate = renderProfileSettings(ROLE.SUPER_ADMIN, {
       notify_type: 'email',
     })
     await save(onUpdate)
@@ -358,7 +358,7 @@ describe('notifications a user receives', () => {
 
   it('an admin turning channel notifications on saves the switch', async () => {
     const put = mockSave(ROLE.ADMIN, { notify_type: 'email' })
-    const onUpdate = renderNotificationTab(ROLE.ADMIN, { notify_type: 'email' })
+    const onUpdate = renderProfileSettings(ROLE.ADMIN, { notify_type: 'email' })
     fireEvent.click(
       screen.getByRole('switch', { name: 'Channel notifications' })
     )

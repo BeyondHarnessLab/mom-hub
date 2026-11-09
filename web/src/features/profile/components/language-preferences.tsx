@@ -16,12 +16,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Globe, Loader2 } from 'lucide-react'
-import { useEffect, useMemo, useState } from 'react'
+import { Loader2 } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
 import { Combobox } from '@/components/ui/combobox'
+import {
+  FieldContent,
+  FieldDescription,
+  FieldLabel,
+} from '@/components/ui/field'
 import {
   INTERFACE_LANGUAGE_OPTIONS,
   normalizeInterfaceLanguage,
@@ -33,6 +38,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { updateUserLanguage } from '../api'
 import { parseUserSettings } from '../lib'
 import type { UserProfile } from '../types'
+import { SettingsRow } from './settings-group'
 
 type LanguagePreferencesProps = {
   profile: UserProfile | null
@@ -43,6 +49,7 @@ export function LanguagePreferences(props: LanguagePreferencesProps) {
   const { t, i18n } = useTranslation()
   const { auth } = useAuthStore()
   const [saving, setSaving] = useState(false)
+  const selectId = useId()
 
   const savedLanguage = useMemo(() => {
     const settings = parseUserSettings(props.profile?.setting)
@@ -97,20 +104,18 @@ export function LanguagePreferences(props: LanguagePreferencesProps) {
   }
 
   return (
-    <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4'>
-      <div className='flex flex-col gap-1'>
-        <div className='flex items-center gap-2 text-sm font-medium'>
-          <Globe className='text-muted-foreground size-4' aria-hidden='true' />
-          {t('Interface Language')}
-        </div>
-        <p className='text-muted-foreground line-clamp-2 text-xs sm:text-sm'>
+    <SettingsRow orientation='responsive'>
+      <FieldContent>
+        <FieldLabel htmlFor={selectId}>{t('Interface Language')}</FieldLabel>
+        <FieldDescription className='text-xs'>
           {t(
             'Language preferences sync across your signed-in devices and affect API error messages.'
           )}
-        </p>
-      </div>
-      <div className='flex items-center gap-2 sm:min-w-48'>
+        </FieldDescription>
+      </FieldContent>
+      <div className='flex items-center gap-2'>
         <Combobox
+          id={selectId}
           options={INTERFACE_LANGUAGE_OPTIONS.map((language) => ({
             value: language.code,
             label: language.label,
@@ -118,13 +123,13 @@ export function LanguagePreferences(props: LanguagePreferencesProps) {
           value={currentLanguage}
           onValueChange={handleLanguageChange}
           disabled={saving}
-          className='w-full sm:w-48'
+          className='w-full @md/field-group:w-52'
           placeholder={t('Select language')}
         />
         {saving && (
           <Loader2 className='text-muted-foreground size-4 animate-spin' />
         )}
       </div>
-    </div>
+    </SettingsRow>
   )
 }

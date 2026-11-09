@@ -363,6 +363,7 @@ func TryTieredSettle(relayInfo *relaycommon.RelayInfo, params billingexpr.TokenP
 		return true, quota, nil
 	}
 	if decision := relayInfo.ResponseModelBilling; decision != nil && len(decision.Calls) > 0 {
+		decision.Quota = tr.ActualQuotaAfterGroup
 		for _, call := range decision.Calls {
 			tr.ActualQuotaBeforeGroup += call.QuotaBeforeGroup
 		}

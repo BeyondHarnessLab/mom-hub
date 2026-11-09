@@ -150,6 +150,7 @@ export function CommonLogMobileCard<TData>(props: {
               modelName={model.name}
               actualModel={model.actualModel}
               responseModel={model.responseModel}
+              modelCalls={model.modelCalls}
               wrapText
               onInspect={() => setSelectedField('model')}
             />
@@ -352,7 +353,10 @@ export function CommonLogMobileCard<TData>(props: {
               {activeField.value}
             </p>
             {selectedField === 'model' && model.responseModel && (
-              <ResponseModelDetails observation={model.responseModel} />
+              <ResponseModelDetails
+                observation={model.responseModel}
+                modelCalls={model.modelCalls}
+              />
             )}
             {selectedField === 'model' &&
               !model.responseModel &&

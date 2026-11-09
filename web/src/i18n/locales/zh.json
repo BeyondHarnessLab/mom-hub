@@ -7352,6 +7352,10 @@
     "Zhipu": "智谱",
     "Zhipu GLM": "智谱GLM",
     "Zhipu V4": "智谱 V4",
-    "Zoom": "缩放"
+    "Zoom": "缩放",
+    "Model calls": "模型调用",
+    "Aggregator": "聚合器",
+    "Advisor": "顾问",
+    "Analyst": "分析师"
   }
 }

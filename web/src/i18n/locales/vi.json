@@ -846,7 +846,7 @@
     "Base URL is required for this channel type": "Loại kênh này yêu cầu Base URL",
     "Base URL is required when an advanced route uses an upstream path": "Cần Base URL khi tuyến nâng cao dùng đường dẫn upstream",
     "Base URL of your Uptime Kuma instance": "URL cơ sở của phiên bản Uptime Kuma của bạn",
-    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.": "URL gốc hiển thị cho người dùng khi gọi API, không gồm /v1. Để trống sẽ dùng địa chỉ máy chủ. Callback OAuth và trang quay lại sau thanh toán vẫn dùng địa chỉ máy chủ.",
+    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. Console pages opened on this domain redirect to Server Address, which OAuth callbacks and payment returns keep using.": "URL gốc hiển thị cho người dùng khi gọi API, không gồm /v1. Để trống sẽ dùng địa chỉ máy chủ. Trang bảng điều khiển mở trên tên miền này sẽ chuyển hướng đến địa chỉ máy chủ; callback OAuth và trang quay lại sau thanh toán vẫn dùng địa chỉ máy chủ.",
     "Basic Authentication": "Xác thực cơ bản",
     "Basic Configuration": "Cấu hình cơ bản",
     "Basic Info": "Thông tin cơ bản",

@@ -54,8 +54,6 @@ function installApiFixtures(createdPayloads: Array<Record<string, unknown>>) {
     switch (url) {
       case '/api/status':
         return { data: { data: { default_use_auto_group: true } } }
-      case '/api/user/models':
-        return { data: { success: true, data: [] } }
       case '/api/user/self/groups':
         return {
           data: {
@@ -65,13 +63,6 @@ function installApiFixtures(createdPayloads: Array<Record<string, unknown>>) {
               default: { desc: 'Standard access', ratio: 1 },
               vip: { desc: 'Priority access', ratio: 2 },
             },
-          },
-        }
-      case '/api/token/auto-groups':
-        return {
-          data: {
-            success: true,
-            data: { groups: ['vip', 'default'], max_count: 3 },
           },
         }
       default:
@@ -86,7 +77,15 @@ function installApiFixtures(createdPayloads: Array<Record<string, unknown>>) {
   }
 }
 
-async function renderCreateDrawer(): Promise<void> {
+const groupsWithAuto = {
+  auto: { desc: 'Automatic routing', ratio: 'auto' },
+  default: { desc: 'Standard access', ratio: 1 },
+  vip: { desc: 'Priority access', ratio: 2 },
+}
+
+async function renderCreateDrawer(
+  groups: Record<string, unknown> = groupsWithAuto
+): Promise<void> {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   })
@@ -97,28 +96,8 @@ async function renderCreateDrawer(): Promise<void> {
     { updatedAt: freshAt }
   )
   queryClient.setQueryData(
-    ['user-models'],
-    { success: true, data: [] },
-    { updatedAt: freshAt }
-  )
-  queryClient.setQueryData(
     ['user-groups'],
-    {
-      success: true,
-      data: {
-        auto: { desc: 'Automatic routing', ratio: 'auto' },
-        default: { desc: 'Standard access', ratio: 1 },
-        vip: { desc: 'Priority access', ratio: 2 },
-      },
-    },
-    { updatedAt: freshAt }
-  )
-  queryClient.setQueryData(
-    ['token-auto-groups'],
-    {
-      success: true,
-      data: { groups: ['vip', 'default'], max_count: 3 },
-    },
+    { success: true, data: groups },
     { updatedAt: freshAt }
   )
   renderedDrawer = { queryClient }
@@ -153,13 +132,15 @@ function findButton(text: string, required = true): HTMLButtonElement | null {
   return button ?? null
 }
 
-function getControlByLabel(labelText: 'Name' | 'Quantity'): HTMLInputElement
-function getControlByLabel(labelText: 'Group'): HTMLButtonElement
-function getControlByLabel(labelText: 'Auto group order'): HTMLElement
-function getControlByLabel(labelText: string): HTMLElement {
-  const label = [...document.querySelectorAll<HTMLLabelElement>('label')].find(
+function findLabel(labelText: string): HTMLLabelElement | undefined {
+  return [...document.querySelectorAll<HTMLLabelElement>('label')].find(
     (candidate) => candidate.textContent?.trim() === labelText
   )
+}
+
+function getControlByLabel(labelText: 'Name'): HTMLInputElement
+function getControlByLabel(labelText: string): HTMLElement {
+  const label = findLabel(labelText)
   if (!label) {
     throw new Error(`Expected label "${labelText}"`)
   }
@@ -181,20 +162,6 @@ function changeInput(input: HTMLInputElement, value: string): void {
   fireEvent.input(input, { target: { value } })
 }
 
-function selectComboboxOption(
-  trigger: HTMLButtonElement,
-  optionDescription: string
-): void {
-  fireEvent.click(trigger)
-  const option = [
-    ...document.querySelectorAll<HTMLElement>('[data-slot="command-item"]'),
-  ].find((candidate) => candidate.textContent?.includes(optionDescription))
-  if (!option) {
-    throw new Error(`Expected option containing "${optionDescription}"`)
-  }
-  fireEvent.click(option)
-}
-
 afterEach(() => {
   apiClient.get = originalGet
   apiClient.post = originalPost
@@ -205,79 +172,128 @@ afterEach(() => {
   }
 })
 
-describe('API keys mutate drawer Auto group integration', () => {
-  test('inherits the root Auto order and sends an empty override for every batch-created key', async () => {
-    const createdPayloads: Array<Record<string, unknown>> = []
-    installApiFixtures(createdPayloads)
+describe('API keys mutate drawer create form', () => {
+  test('shows no group, quantity or advanced settings controls', async () => {
+    installApiFixtures([])
     await renderCreateDrawer()
 
-    const groupTrigger = getControlByLabel('Group')
-    expect(groupTrigger.textContent?.includes('auto')).toBe(true)
-    expect(
-      document.body.textContent?.includes(
-        'Using the complete global Auto order (2 groups)'
-      )
-    ).toBe(true)
-    expect(
-      [
-        ...document.querySelectorAll('[data-slot="global-auto-order-name"]'),
-      ].map((item) => item.textContent)
-    ).toEqual(['vip', 'default'])
-    expect(findButton('Restore global Auto', true).disabled).toBe(true)
-
-    changeInput(getControlByLabel('Name'), 'batch')
-    changeInput(getControlByLabel('Quantity'), '2')
-    fireEvent.click(findButton('Save changes', true))
-    await waitFor(() => expect(createdPayloads).toHaveLength(2))
-
-    expect(createdPayloads.length).toBe(2)
-    expect(createdPayloads[0]?.name).toBe('batch')
-    for (const payload of createdPayloads) {
-      expect(payload.group).toBe('auto')
-      expect(payload.auto_groups).toEqual([])
-      expect(payload.cross_group_retry).toBe(true)
+    for (const label of [
+      'Group',
+      'Auto group order',
+      'Cross-group retry',
+      'Quantity',
+      'Model Limits',
+      'IP Whitelist (supports CIDR)',
+      'Allow querying user quota',
+    ]) {
+      expect(findLabel(label)).toBeUndefined()
     }
+    expect(findButton('Advanced Settings', false)).toBeNull()
   })
 
-  test('preserves an unsaved custom order and mode after Auto to ordinary to Auto changes', async () => {
+  test('creates one auto key that inherits the global order when auto is the default', async () => {
     const createdPayloads: Array<Record<string, unknown>> = []
     installApiFixtures(createdPayloads)
     await renderCreateDrawer()
 
-    const autoOrderControl = getControlByLabel('Auto group order')
-    const addGroupTrigger = autoOrderControl.querySelector<HTMLButtonElement>(
-      'button[role="combobox"]'
-    )
-    if (!addGroupTrigger) {
-      throw new Error('Expected Auto group order combobox')
-    }
-    selectComboboxOption(addGroupTrigger, 'Priority access')
-
-    expect(
-      document.querySelector('button[aria-label="Remove vip"]')
-    ).toBeTruthy()
-    expect(document.body.textContent?.includes('1 / 3 groups selected')).toBe(
-      true
-    )
-    expect(findButton('Restore global Auto', true).disabled).toBe(false)
-
-    const groupTrigger = getControlByLabel('Group')
-    selectComboboxOption(groupTrigger, 'Standard access')
-    expect(document.querySelector('button[aria-label="Remove vip"]')).toBe(null)
-    selectComboboxOption(groupTrigger, 'Automatic routing')
-
-    expect(
-      document.querySelector('button[aria-label="Remove vip"]')
-    ).toBeTruthy()
-    expect(document.body.textContent?.includes('1 / 3 groups selected')).toBe(
-      true
-    )
-    expect(findButton('Restore global Auto', true).disabled).toBe(false)
-
-    changeInput(getControlByLabel('Name'), 'custom')
+    changeInput(getControlByLabel('Name'), 'single')
     fireEvent.click(findButton('Save changes', true))
     await waitFor(() => expect(createdPayloads).toHaveLength(1))
-    expect(createdPayloads[0]?.auto_groups).toEqual(['vip'])
+
+    expect(createdPayloads[0]).toMatchObject({
+      name: 'single',
+      group: 'auto',
+      cross_group_retry: true,
+      model_limits_enabled: false,
+      model_limits: '',
+      allow_ips: '',
+      allow_user_quota_query: true,
+    })
+    expect(createdPayloads[0]).not.toHaveProperty('auto_groups')
+  })
+
+  test('creates a key in the user group when the user cannot use auto', async () => {
+    const createdPayloads: Array<Record<string, unknown>> = []
+    installApiFixtures(createdPayloads)
+    await renderCreateDrawer({
+      default: { desc: 'Standard access', ratio: 1 },
+    })
+
+    changeInput(getControlByLabel('Name'), 'no-auto')
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(createdPayloads).toHaveLength(1))
+
+    expect(createdPayloads[0]?.group).toBe('')
+    expect(createdPayloads[0]?.cross_group_retry).toBe(false)
+  })
+})
+
+describe('API keys mutate drawer update form', () => {
+  test('keeps the stored group, auto order and restrictions when a key is renamed', async () => {
+    installApiFixtures([])
+    const stored: ApiKey = {
+      id: 7,
+      name: 'restricted',
+      key: '',
+      status: 1,
+      remain_quota: 0,
+      used_quota: 0,
+      unlimited_quota: true,
+      expired_time: -1,
+      created_time: 1,
+      accessed_time: 0,
+      group: 'auto',
+      auto_groups: ['vip'],
+      cross_group_retry: false,
+      model_limits_enabled: true,
+      model_limits: 'gpt-4o,claude-sonnet',
+      allow_ips: '10.0.0.0/8',
+      allow_user_quota_query: false,
+    }
+    const getFixture = apiClient.get
+    vi.spyOn(apiClient, 'get').mockImplementation((url) =>
+      url === '/api/token/7'
+        ? Promise.resolve({ data: { success: true, data: stored } })
+        : getFixture(url)
+    )
+    const put = vi
+      .spyOn(api, 'put')
+      .mockResolvedValue({ data: { success: true } })
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false } },
+    })
+    renderedDrawer = { queryClient }
+    render(
+      <QueryClientProvider client={queryClient}>
+        <I18nextProvider i18n={i18n}>
+          <ApiKeysProvider>
+            <ApiKeysMutateDrawer
+              open
+              currentRow={stored}
+              onOpenChange={() => undefined}
+            />
+          </ApiKeysProvider>
+        </I18nextProvider>
+      </QueryClientProvider>
+    )
+    await waitFor(() => expect(findButton('Save changes', true)).toBeEnabled())
+
+    changeInput(getControlByLabel('Name'), 'renamed')
+    fireEvent.click(findButton('Save changes', true))
+    await waitFor(() => expect(put).toHaveBeenCalled())
+
+    const payload = put.mock.calls[0][1]
+    expect(payload).toMatchObject({
+      id: 7,
+      name: 'renamed',
+      group: 'auto',
+      cross_group_retry: false,
+      model_limits_enabled: true,
+      model_limits: 'gpt-4o,claude-sonnet',
+      allow_ips: '10.0.0.0/8',
+      allow_user_quota_query: false,
+    })
+    expect(payload).not.toHaveProperty('auto_groups')
   })
 })
 
@@ -402,25 +418,4 @@ describe('API key expiry across editing sessions', () => {
       expect(payloads[0]?.expired_time).toBe(-1)
     }
   )
-})
-
-describe('API keys mutate drawer user quota query switch', () => {
-  test('sends false for a new key after the switch, which starts on, is turned off', async () => {
-    const createdPayloads: Array<Record<string, unknown>> = []
-    installApiFixtures(createdPayloads)
-    await renderCreateDrawer()
-
-    fireEvent.click(findButton('Advanced Settings', true))
-    const quotaQuerySwitch = await screen.findByRole('switch', {
-      name: 'Allow querying user quota',
-    })
-    expect(quotaQuerySwitch).toBeChecked()
-    fireEvent.click(quotaQuerySwitch)
-    expect(quotaQuerySwitch).not.toBeChecked()
-
-    changeInput(getControlByLabel('Name'), 'no-user-quota')
-    fireEvent.click(findButton('Save changes', true))
-    await waitFor(() => expect(createdPayloads).toHaveLength(1))
-    expect(createdPayloads[0]?.allow_user_quota_query).toBe(false)
-  })
 })

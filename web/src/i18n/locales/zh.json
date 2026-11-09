@@ -846,7 +846,7 @@
     "Base URL is required for this channel type": "此渠道类型需要填写 Base URL",
     "Base URL is required when an advanced route uses an upstream path": "高级路由使用上游路径时必须填写 Base URL",
     "Base URL of your Uptime Kuma instance": "您的 Uptime Kuma 实例的基础 URL",
-    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. OAuth callbacks and payment returns keep using Server Address.": "展示给用户调用 API 的基础地址，不含 /v1。留空时使用服务器地址。OAuth 回调和支付跳转仍使用服务器地址。",
+    "Base URL shown to users for API requests, without /v1. Falls back to Server Address when empty. Console pages opened on this domain redirect to Server Address, which OAuth callbacks and payment returns keep using.": "展示给用户调用 API 的基础地址，不含 /v1。留空时使用服务器地址。在这个域名上打开控制台页面会跳转到服务器地址，OAuth 回调和支付跳转也仍使用服务器地址。",
     "Basic Authentication": "基本身份验证",
     "Basic Configuration": "基本配置",
     "Basic Info": "基本信息",

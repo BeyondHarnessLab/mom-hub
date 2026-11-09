@@ -27,11 +27,16 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover'
+import { toIntlLocale } from '@/i18n/languages'
+import { formatLogQuota, formatNumber } from '@/lib/format'
 import { getLobeIcon } from '@/lib/lobe-icon'
 import { resolveModelProvider } from '@/lib/model-provider'
 import { cn } from '@/lib/utils'
 
-import { isResponseModelMismatch } from '../lib/response-model'
+import {
+  isResponseModelMismatch,
+  type ModelCallRow,
+} from '../lib/response-model'
 import type { LogOtherData } from '../types'
 import { DetailRow } from './dialogs/log-detail-layout'
 
@@ -39,6 +44,7 @@ interface ModelBadgeProps {
   modelName: string
   actualModel?: string
   responseModel?: LogOtherData['response_model']
+  modelCalls?: ModelCallRow[]
   className?: string
   wrapText?: boolean
   onInspect?: () => void
@@ -102,6 +108,7 @@ export function ModelBadge(props: ModelBadgeProps) {
   const modelLabel = `${t('Model')}: ${props.modelName}${responseModelLabel ? `, ${responseModelLabel}` : ''}`
   const hasDetails =
     !!props.actualModel ||
+    !!(props.responseModel && props.modelCalls?.length) ||
     !!(
       props.responseModel &&
       (mismatch ||
@@ -178,7 +185,10 @@ export function ModelBadge(props: ModelBadgeProps) {
       </PopoverTrigger>
       <PopoverContent className='w-96 max-w-[calc(100vw-2rem)]'>
         {props.responseModel ? (
-          <ResponseModelDetails observation={props.responseModel} />
+          <ResponseModelDetails
+            observation={props.responseModel}
+            modelCalls={props.modelCalls}
+          />
         ) : (
           <div className='space-y-2'>
             <div className='flex items-start justify-between gap-3'>
@@ -206,6 +216,7 @@ export function ModelBadge(props: ModelBadgeProps) {
 
 export function ResponseModelDetails(props: {
   observation: NonNullable<LogOtherData['response_model']>
+  modelCalls?: ModelCallRow[]
 }) {
   const { t } = useTranslation()
   const mismatch = isResponseModelMismatch(props.observation)
@@ -265,6 +276,55 @@ export function ResponseModelDetails(props: {
           )}
         </p>
       )}
+      {!!props.modelCalls?.length && <ModelCallList calls={props.modelCalls} />}
+    </div>
+  )
+}
+
+function ModelCallList(props: { calls: ModelCallRow[] }) {
+  const { t, i18n } = useTranslation()
+  const locale = toIntlLocale(i18n.resolvedLanguage || i18n.language)
+  const roleLabels: Record<string, string> = {
+    aggregator: t('Aggregator'),
+    advisor: t('Advisor'),
+    analyst: t('Analyst'),
+  }
+
+  return (
+    <div
+      role='group'
+      aria-label={t('Model calls')}
+      className='space-y-1.5 border-t pt-2'
+    >
+      <p className='text-xs font-semibold'>{t('Model calls')}</p>
+      {props.calls.map((call, index) => {
+        const usage = [
+          `${formatNumber(call.promptTokens, locale)} / ${formatNumber(call.completionTokens, locale)}`,
+          call.cacheTokens > 0 &&
+            `${t('Cache')} ${formatNumber(call.cacheTokens, locale)}`,
+          call.quota != null && formatLogQuota(call.quota),
+          call.keptEntryPrice && t('Kept entry price'),
+        ].filter(Boolean)
+        return (
+          <DetailRow
+            // Calls have no id, and the same model can serve several advisors.
+            // oxlint-disable-next-line react/no-array-index-key
+            key={index}
+            label={roleLabels[call.role] ?? call.role}
+            value={
+              <>
+                <span className='block leading-5 wrap-anywhere'>
+                  {call.model || '-'}
+                </span>
+                <span className='text-muted-foreground block'>
+                  {usage.join(' · ')}
+                </span>
+              </>
+            }
+            mono
+          />
+        )
+      })}
     </div>
   )
 }

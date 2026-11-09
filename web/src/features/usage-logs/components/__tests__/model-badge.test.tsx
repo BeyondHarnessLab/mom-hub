@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { expect, it, vi } from 'vitest'
 
@@ -430,3 +430,60 @@ it.each([
     ).not.toBeInTheDocument()
   }
 )
+
+it('lists the aggregator and every reported model call in the model details', async () => {
+  const user = userEvent.setup()
+  render(
+    <ModelBadge
+      modelName='nvrouter/fusion'
+      responseModel={{
+        requested_model: 'nvrouter/fusion',
+        upstream_model: 'nvrouter/fusion',
+        returned_model: 'deepseek/deepseek-v4.1-flash',
+      }}
+      modelCalls={[
+        {
+          role: 'aggregator',
+          model: 'deepseek/deepseek-v4.1-flash',
+          promptTokens: 1811,
+          completionTokens: 135,
+          cacheTokens: 0,
+          quota: 371,
+          keptEntryPrice: false,
+        },
+        {
+          role: 'advisor',
+          model: 'zai-org/glm-5.3-flash',
+          promptTokens: 508,
+          completionTokens: 765,
+          cacheTokens: 0,
+          quota: 241,
+          keptEntryPrice: false,
+        },
+        {
+          role: 'advisor',
+          model: 'minimax/minimax-m3',
+          promptTokens: 662,
+          completionTokens: 35,
+          cacheTokens: 159,
+          quota: 106,
+          keptEntryPrice: true,
+        },
+      ]}
+    />
+  )
+  await user.click(
+    screen.getByRole('button', { name: /^Model: nvrouter\/fusion/ })
+  )
+  const calls = within(
+    await screen.findByRole('group', { name: 'Model calls' })
+  )
+  expect(calls.getByText('Aggregator')).toBeVisible()
+  expect(calls.getAllByText('Advisor')).toHaveLength(2)
+  expect(calls.getByText('zai-org/glm-5.3-flash')).toBeVisible()
+  expect(calls.getByText('minimax/minimax-m3')).toBeVisible()
+  expect(calls.getByText(/^1,811 \/ 135 · .+$/)).toBeVisible()
+  expect(
+    calls.getByText(/^662 \/ 35 · Cache 159 · .+ · Kept entry price$/)
+  ).toBeVisible()
+})

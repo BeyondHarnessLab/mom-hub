@@ -28,11 +28,14 @@ type ResponseModel struct {
 // request. BillingModel is the billing name whose expression priced it; it is
 // empty when the request kept the entry model's price, and Fallback says why.
 // Calls prices the other model calls the response reported, in their order.
+// Quota is the response's own share after the fee and group ratio, for
+// display; settlement records it only when calls were reported.
 type ResponseModelBilling struct {
 	ResponseModel string                     `json:"response_model,omitempty"`
 	BillingModel  string                     `json:"billing_model,omitempty"`
 	Fallback      string                     `json:"fallback,omitempty"`
 	Calls         []ResponseModelCallBilling `json:"calls,omitempty"`
+	Quota         int                        `json:"-"`
 }
 
 // ResponseModelCall is a billed model call behind a response other than the one
@@ -59,6 +62,18 @@ type ResponseModelCallBilling struct {
 	CacheTokens      int     `json:"cache_tokens,omitempty"`
 	Quota            int     `json:"quota"`
 	QuotaBeforeGroup float64 `json:"-"`
+}
+
+// ResponseModelCallLog is what a consume log shows every viewer about a priced
+// model call: the model that served it, its usage and its share of the charge.
+// The billing name and fallback reason stay admin-only pricing configuration.
+type ResponseModelCallLog struct {
+	Role             string `json:"role,omitempty"`
+	Model            string `json:"model,omitempty"`
+	PromptTokens     int    `json:"prompt_tokens"`
+	CompletionTokens int    `json:"completion_tokens"`
+	CacheTokens      int    `json:"cache_tokens,omitempty"`
+	Quota            int    `json:"quota"`
 }
 
 // TakeResponseModelCalls records the model calls a response body or stream

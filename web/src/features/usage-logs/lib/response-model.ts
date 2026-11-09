@@ -16,6 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+import type { UsageLog } from '../data/schema'
 import type { LogOtherData } from '../types'
 
 export type ResponseModelObservation = NonNullable<
@@ -48,4 +49,58 @@ export function isResponseModelMismatch(
     }
   }
   return true
+}
+
+/** One billed model call behind a response, as shown in the model details. */
+export interface ModelCallRow {
+  role: string
+  model: string
+  promptTokens: number
+  completionTokens: number
+  cacheTokens: number
+  // Absent on logs written before the response's own share was recorded.
+  quota?: number
+  keptEntryPrice: boolean
+}
+
+/**
+ * List every model call behind a fusion response: the aggregator that answered,
+ * with the log's own usage, followed by the calls the upstream reported in
+ * usage.model_calls. Logs written before the calls were public only carry
+ * them in admin_info. Whether a call kept the entry price is admin-only.
+ * Returns an empty list when the log has no reported calls.
+ */
+export function getModelCalls(
+  log: Pick<UsageLog, 'prompt_tokens' | 'completion_tokens'>,
+  other: LogOtherData | null
+): ModelCallRow[] {
+  const billing = other?.admin_info?.response_model_billing
+  const calls =
+    other?.model_calls ??
+    billing?.calls?.map((call) => ({ ...call, model: call.response_model }))
+  if (!calls?.length) return []
+  return [
+    {
+      role: 'aggregator',
+      model:
+        other?.settle_model ||
+        billing?.response_model ||
+        other?.response_model?.returned_model ||
+        '',
+      promptTokens: log.prompt_tokens || 0,
+      completionTokens: log.completion_tokens || 0,
+      cacheTokens: other?.cache_tokens || 0,
+      quota: other?.response_quota,
+      keptEntryPrice: !!billing?.fallback,
+    },
+    ...calls.map((call, index) => ({
+      role: call.role || '',
+      model: call.model || '',
+      promptTokens: call.prompt_tokens || 0,
+      completionTokens: call.completion_tokens || 0,
+      cacheTokens: call.cache_tokens || 0,
+      quota: call.quota,
+      keptEntryPrice: !!billing?.calls?.[index]?.fallback,
+    })),
+  ]
 }

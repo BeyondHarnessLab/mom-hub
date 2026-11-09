@@ -29,6 +29,7 @@ import { translateServerText } from '@/lib/server-error-message'
 import type { UsageLog } from '../data/schema'
 import type { LogOtherData } from '../types'
 import { buildQuotaAuditOperation } from './quota-audit-operation'
+import { getModelCalls, type ModelCallRow } from './response-model'
 
 export { normalizeTierLabel }
 
@@ -241,6 +242,7 @@ export function formatModelName(log: UsageLog): {
   isMapped: boolean
   actualModel?: string
   responseModel?: LogOtherData['response_model']
+  modelCalls: ModelCallRow[]
 } {
   const other = parseLogOther(log.other)
   const isMapped = !!(
@@ -254,6 +256,7 @@ export function formatModelName(log: UsageLog): {
     isMapped,
     actualModel: isMapped ? other.upstream_model_name : undefined,
     responseModel: other?.response_model,
+    modelCalls: getModelCalls(log, other),
   }
 }
 

@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { describe, expect, test } from 'vitest'
 
 import {
+  getModelCalls,
   isResponseModelMismatch,
   type ResponseModelObservation,
 } from '../response-model'
@@ -86,5 +87,85 @@ describe('isResponseModelMismatch', () => {
   test('returns false without an observation or a returned model', () => {
     expect(isResponseModelMismatch(undefined)).toBe(false)
     expect(isResponseModelMismatch(observation(''))).toBe(false)
+  })
+})
+
+describe('getModelCalls', () => {
+  test('returns no rows when the log reports no model calls', () => {
+    expect(
+      getModelCalls({ prompt_tokens: 10, completion_tokens: 5 }, {})
+    ).toEqual([])
+  })
+
+  test('puts the aggregator first with the log usage and its share, then each call', () => {
+    expect(
+      getModelCalls(
+        { prompt_tokens: 1811, completion_tokens: 135 },
+        {
+          cache_tokens: 64,
+          settle_model: 'deepseek/deepseek-v4.1-flash',
+          response_quota: 371,
+          model_calls: [
+            {
+              role: 'advisor',
+              model: 'zai-org/glm-5.3-flash',
+              prompt_tokens: 508,
+              completion_tokens: 765,
+              quota: 241,
+            },
+          ],
+        }
+      )
+    ).toEqual([
+      {
+        role: 'aggregator',
+        model: 'deepseek/deepseek-v4.1-flash',
+        promptTokens: 1811,
+        completionTokens: 135,
+        cacheTokens: 64,
+        quota: 371,
+        keptEntryPrice: false,
+      },
+      {
+        role: 'advisor',
+        model: 'zai-org/glm-5.3-flash',
+        promptTokens: 508,
+        completionTokens: 765,
+        cacheTokens: 0,
+        quota: 241,
+        keptEntryPrice: false,
+      },
+    ])
+  })
+
+  test('reads calls from admin_info on older logs and marks calls that kept the entry price', () => {
+    const rows = getModelCalls(
+      { prompt_tokens: 1811, completion_tokens: 135 },
+      {
+        admin_info: {
+          response_model_billing: {
+            response_model: 'deepseek/deepseek-v4.1-flash',
+            billing_model: 'auto-nv/deepseek-v4.1-flash',
+            calls: [
+              {
+                role: 'advisor',
+                response_model: 'vendor/other',
+                fallback: 'unlisted_response_model',
+                prompt_tokens: 662,
+                completion_tokens: 35,
+                cache_tokens: 159,
+                quota: 106,
+              },
+            ],
+          },
+        },
+      }
+    )
+    expect(
+      rows.map((row) => [row.model, row.quota, row.keptEntryPrice])
+    ).toEqual([
+      ['deepseek/deepseek-v4.1-flash', undefined, false],
+      ['vendor/other', 106, true],
+    ])
   })
 })

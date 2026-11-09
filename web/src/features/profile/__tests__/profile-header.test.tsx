@@ -16,10 +16,10 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { cleanup, render, screen, within } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { afterEach, expect, it } from 'vitest'
 
-import { ProfileCard } from '../components/profile-card'
+import { ProfileHeader } from '../components/profile-header'
 import type { UserProfile } from '../types'
 
 const profile: UserProfile = {
@@ -42,36 +42,22 @@ afterEach(() => {
   cleanup()
 })
 
-function renderProfileCard() {
-  return render(
-    <ProfileCard
-      profile={profile}
-      loading={false}
-      onProfileUpdate={() => undefined}
-      quotaRemindEnabled
-      quotaRemindThreshold={1000}
-    />
-  )
+function renderProfileHeader() {
+  return render(<ProfileHeader profile={profile} loading={false} />)
 }
 
-it('the profile shows identity, language and settings inside a single card', () => {
-  const { container } = renderProfileCard()
+it('the header shows the name, role, user ID, username and group', () => {
+  renderProfileHeader()
 
-  const cards = container.querySelectorAll('[data-slot="card"]')
-  expect(cards).toHaveLength(1)
-  const card = cards[0] as HTMLElement
-  expect(within(card).getByRole('heading', { name: 'Alice' })).toBeVisible()
-  expect(
-    within(card).getByRole('region', { name: 'Language Preferences' })
-  ).toBeVisible()
-  expect(within(card).getByRole('region', { name: 'Settings' })).toBeVisible()
-  expect(
-    within(card).getByRole('button', { name: 'Save Settings' })
-  ).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Alice' })).toBeVisible()
+  expect(screen.getByText('@alice · default')).toBeVisible()
+  for (const badge of ['User', 'User ID 7']) {
+    expect(screen.getByText(badge)).toBeVisible()
+  }
 })
 
-it('the profile card shows no balance, usage or request stats', () => {
-  renderProfileCard()
+it('the header shows no balance, usage or request stats', () => {
+  renderProfileHeader()
 
   for (const stat of ['Current Balance', 'Total Usage', 'API Requests']) {
     expect(screen.queryByText(stat)).not.toBeInTheDocument()

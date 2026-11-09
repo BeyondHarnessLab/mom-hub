@@ -1,3 +1,6 @@
+> [!NOTE]
+> **mom-hub** 是 [Modeless](https://modeless.ai) 的控制台與 API 閘道（[console.modeless.ai](https://console.modeless.ai)），基於 QuantumNous 及貢獻者開發的 [New API](https://github.com/QuantumNous/new-api) 修改而來，自 2026 年 11 月起修改，全部變更見本儲存庫的提交歷史。本專案以 AGPLv3 授權，並適用 [NOTICE](./NOTICE) 中的附加條款。下文為上游 New API 的 README 原文。
+
 <div align="center">
 
 ![new-api](/web/public/logo.png)

@@ -351,6 +351,23 @@ func InjectTieredBillingInfo(other *model.LogOther, relayInfo *relaycommon.Relay
 			other.SetPublic("settle_model", decision.ResponseModel)
 		}
 		other.SetAdmin("response_model_billing", *decision)
+		// The calls behind the response and each one's share are part of what
+		// the caller paid for; they are logged only when settlement charged them.
+		if result != nil && len(decision.Calls) > 0 {
+			calls := make([]relaycommon.ResponseModelCallLog, 0, len(decision.Calls))
+			for _, call := range decision.Calls {
+				calls = append(calls, relaycommon.ResponseModelCallLog{
+					Role:             call.Role,
+					Model:            call.ResponseModel,
+					PromptTokens:     call.PromptTokens,
+					CompletionTokens: call.CompletionTokens,
+					CacheTokens:      call.CacheTokens,
+					Quota:            call.Quota,
+				})
+			}
+			other.SetPublic("model_calls", calls)
+			other.SetPublic("response_quota", decision.Quota)
+		}
 	}
 	if result != nil {
 		if tokens := result.BillingTokens; tokens != nil && result.BillingUnit == billingexpr.BillingUnitToken {

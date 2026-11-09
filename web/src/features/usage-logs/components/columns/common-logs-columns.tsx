@@ -692,6 +692,7 @@ export function useCommonLogsColumns(
                 modelName={modelInfo.name}
                 actualModel={modelInfo.actualModel}
                 responseModel={modelInfo.responseModel}
+                modelCalls={modelInfo.modelCalls}
               />
             </div>
           )

@@ -156,10 +156,23 @@ export interface LogOtherData {
     task_plugin?: TaskPluginInfo
     // How a response model billing rule settled the request. billing_model is
     // empty when the request kept the entry price, and fallback says why.
+    // calls prices the other model calls the upstream reported behind the
+    // response (usage.model_calls), such as fusion advisors; quota is each
+    // call's share after the fee and group ratio.
     response_model_billing?: {
       response_model?: string
       billing_model?: string
       fallback?: ResponseModelBillingFallback | string
+      calls?: Array<{
+        role?: string
+        response_model?: string
+        billing_model?: string
+        fallback?: ResponseModelBillingFallback | string
+        prompt_tokens: number
+        completion_tokens: number
+        cache_tokens?: number
+        quota: number
+      }>
     }
   }
   root_info?: {
@@ -245,6 +258,18 @@ export interface LogOtherData {
   // and the fee added to the expression price (0.05 is 5%).
   settle_model?: string
   fee_rate?: number
+  // The other model calls the upstream reported behind the response, such as
+  // fusion advisors, each with its share of the charge after the fee and group
+  // ratio, and the response's own share. Set only when the calls were charged.
+  model_calls?: Array<{
+    role?: string
+    model?: string
+    prompt_tokens: number
+    completion_tokens: number
+    cache_tokens?: number
+    quota: number
+  }>
+  response_quota?: number
   reasoning_effort?: string
   image?: boolean
   image_ratio?: number

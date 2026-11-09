@@ -362,6 +362,14 @@ func TestResponseModelBillingPricesReportedModelCalls(t *testing.T) {
 	logged := other.Snapshot()
 	assert.Equal(t, "vendor/cheap", logged["settle_model"])
 	assert.Equal(t, *info.ResponseModelBilling, logged["admin_info"].(map[string]any)["response_model_billing"])
+	// Every viewer sees the calls and the response's own share, 1050 * 2, which
+	// add up to the charge; billing names and fallbacks stay admin-only.
+	assert.Equal(t, 2100, logged["response_quota"])
+	assert.Equal(t, []relaycommon.ResponseModelCallLog{
+		{Role: "advisor", Model: "vendor/mid", PromptTokens: 2000, CompletionTokens: 400, Quota: 8400},
+		{Role: "advisor", Model: "vendor/cheap", PromptTokens: 1000, CompletionTokens: 100, CacheTokens: 600, Quota: 1008},
+		{Role: "advisor", Model: "vendor/other", PromptTokens: 100, CompletionTokens: 10, Quota: 1575},
+	}, logged["model_calls"])
 }
 
 func TestModelPriceHelperRequestBillingRatiosOnlyApplyToFixedPrice(t *testing.T) {

@@ -90,6 +90,7 @@ import {
   renderLogContent,
 } from '../../lib/format'
 import { buildQuotaAuditOperation } from '../../lib/quota-audit-operation'
+import { getModelCalls } from '../../lib/response-model'
 import {
   getLogTypeConfig,
   isPerCallBilling,
@@ -1227,7 +1228,10 @@ export function DetailsDialog(props: DetailsDialogProps) {
 
         {other?.response_model && (
           <DetailSection label={t('Response Model')}>
-            <ResponseModelDetails observation={other.response_model} />
+            <ResponseModelDetails
+              observation={other.response_model}
+              modelCalls={getModelCalls(props.log, other)}
+            />
           </DetailSection>
         )}
         {/* Model mapping for logs without response observations */}

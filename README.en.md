@@ -1,3 +1,6 @@
+> [!NOTE]
+> **mom-hub** is the console and API gateway behind [Modeless](https://modeless.ai) ([console.modeless.ai](https://console.modeless.ai)). It is a modified version of [New API](https://github.com/QuantumNous/new-api) by QuantumNous and contributors, changed since November 2026; the changes are recorded in this repository's commit history. It is licensed under AGPLv3 with the additional terms in [NOTICE](./NOTICE). The rest of this file is the upstream New API README.
+
 <div align="center">
 
 ![new-api](/web/public/logo.png)

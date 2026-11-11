@@ -149,3 +149,38 @@ func TestValidateResponseModelBilling(t *testing.T) {
 		})
 	}
 }
+
+func TestRoutedModelPricesListsEachRoutersModelsAtTheirOwnPrice(t *testing.T) {
+	saved := billingSetting
+	t.Cleanup(func() { billingSetting = saved })
+	billingSetting = BillingSetting{
+		BillingMode: map[string]string{
+			"router/auto": BillingModeTieredExpr, "router/fusion": BillingModeTieredExpr,
+			"auto/cheap": BillingModeTieredExpr, "auto/pro": BillingModeTieredExpr, "fusion/pro": BillingModeTieredExpr, "auto/task": BillingModeTieredExpr,
+		},
+		BillingExpr: map[string]string{
+			"router/auto":   `tier("entry", p * 10 + c * 50)`,
+			"router/fusion": `tier("entry", p * 10 + c * 50)`,
+			"auto/cheap":    `tier("cheap", p + c * 5)`,
+			"auto/pro":      `tier("pro", p * 4 + c * 20)`,
+			"fusion/pro":    `tier("pro", p * 5 + c * 25)`,
+			"auto/task":     `tier("task", u("seconds") * 0.4)`,
+		},
+		ResponseModelBilling: map[string]ResponseModelBillingRule{
+			"router/auto": {FeeRate: 0.05, Models: map[string]string{
+				"vendor/cheap": "auto/cheap", "vendor/pro": "auto/pro", "vendor/task": "auto/task", "vendor/unpriced": "auto/missing",
+			}},
+			"router/fusion": {FeeRate: 0.05, Models: map[string]string{"vendor/cheap": "auto/cheap", "vendor/pro": "fusion/pro"}},
+			"router/hidden": {Models: map[string]string{"vendor/secret": "auto/cheap"}},
+		},
+	}
+
+	prices := RoutedModelPrices([]string{"router/fusion", "router/auto", "vendor/plain"})
+
+	assert.Equal(t, []RoutedModelPrice{
+		{ModelName: "vendor/cheap", Routers: []string{"router/auto", "router/fusion"}, BillingExpr: `tier("cheap", p + c * 5)`},
+		{ModelName: "vendor/pro", Routers: []string{"router/auto"}, BillingExpr: `tier("pro", p * 4 + c * 20)`},
+		{ModelName: "vendor/pro", Routers: []string{"router/fusion"}, BillingExpr: `tier("pro", p * 5 + c * 25)`},
+	}, prices)
+	assert.Empty(t, RoutedModelPrices(nil))
+}

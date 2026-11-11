@@ -390,7 +390,7 @@ func GetVerificationRequirements(identity AuthIdentity, scope string) (*Verifica
 	}
 	requirements := &VerificationRequirements{Scope: scope, Methods: methods, OAuthProviders: []VerificationOAuthProvider{}, PasswordEncryptionEnabled: common.PasswordLoginEncryptionEnabled}
 	for i := range methods {
-		if methods[i].Method == VerificationMethodPassword && !common.PasswordLoginEnabled {
+		if methods[i].Method == VerificationMethodPassword && !common.PasswordLoginAllowed(state.Role) {
 			switch scope {
 			case VerificationScopeAccountBind, VerificationScopeAccountUnbind, VerificationScopePasswordSet, VerificationScopePasswordChange, VerificationScopeAccountDelete,
 				VerificationScopeAdminUserCreate, VerificationScopeAdminUserUpdate, VerificationScopeAdminUserDelete,

@@ -68,14 +68,14 @@ async function renderProfilePage() {
   await screen.findByRole('button', { name: 'Save Settings' })
 }
 
-it('the profile page has a Profile title and the user name in its header', async () => {
+it('the profile page has a Settings title and the user name in its header', async () => {
   await renderProfilePage()
 
-  expect(screen.getByRole('heading', { name: 'Profile' })).toBeVisible()
+  expect(screen.getByRole('heading', { name: 'Settings' })).toBeVisible()
   expect(screen.getByRole('heading', { name: 'Alice' })).toBeVisible()
 })
 
-it('language and unpriced models sit in Preferences, email and reminders in Notifications', async () => {
+it('language sits in Preferences, email and reminders in Notifications, and unpriced models are not offered', async () => {
   await renderProfilePage()
 
   const preferences = screen.getByRole('group', { name: 'Preferences' })
@@ -83,8 +83,8 @@ it('language and unpriced models sit in Preferences, email and reminders in Noti
     within(preferences).getByRole('combobox', { name: 'Interface Language' })
   ).toBeVisible()
   expect(
-    within(preferences).getByRole('switch', { name: 'Accept Unpriced Models' })
-  ).toBeVisible()
+    screen.queryByRole('switch', { name: 'Accept Unpriced Models' })
+  ).not.toBeInTheDocument()
   const notifications = screen.getByRole('group', { name: 'Notifications' })
   expect(
     within(notifications).getByRole('textbox', { name: 'Notification Email' })

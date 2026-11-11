@@ -112,7 +112,7 @@ export function useSidebarData(): SidebarData {
             icon: Wallet,
           },
           {
-            title: t('Profile'),
+            title: t('Settings'),
             url: '/profile',
             icon: User,
           },

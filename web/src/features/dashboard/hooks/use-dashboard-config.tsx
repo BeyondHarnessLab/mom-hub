@@ -16,16 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import {
-  Hash,
-  Coins,
-  Layers,
-  Download,
-  Upload,
-  Gauge,
-  Zap,
-  type LucideIcon,
-} from 'lucide-react'
+import { Coins, Layers, Gauge, Zap, type LucideIcon } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import type { IconBadgeTone } from '@/components/ui/icon-badge'
@@ -44,13 +35,6 @@ export function useModelStatCardsConfig(): StatCardConfig[] {
 
   return [
     {
-      key: 'count',
-      title: t('Total Count'),
-      icon: Hash,
-      iconTone: 'info',
-      getValue: (stat) => stat?.rpm ?? 0,
-    },
-    {
       key: 'quota',
       title: t('Total Quota'),
       icon: Coins,
@@ -63,20 +47,6 @@ export function useModelStatCardsConfig(): StatCardConfig[] {
       icon: Layers,
       iconTone: 'chart-4',
       getValue: (stat) => stat?.tpm ?? 0,
-    },
-    {
-      key: 'cacheRead',
-      title: t('Cache Read'),
-      icon: Download,
-      iconTone: 'chart-3',
-      getValue: (stat) => stat?.cacheRead ?? 0,
-    },
-    {
-      key: 'cacheCreation',
-      title: t('Cache Write'),
-      icon: Upload,
-      iconTone: 'chart-5',
-      getValue: (stat) => stat?.cacheCreation ?? 0,
     },
     {
       key: 'avgRpm',

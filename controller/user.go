@@ -51,10 +51,6 @@ func GetPasswordEncryptionKey(c *gin.Context) {
 }
 
 func Login(c *gin.Context) {
-	if !common.PasswordLoginEnabled {
-		common.ApiErrorT(c, "Password login has been disabled by administrator")
-		return
-	}
 	var loginRequest LoginRequest
 	err := common.DecodeJson(c.Request.Body, &loginRequest)
 	if err != nil {
@@ -93,6 +89,13 @@ func Login(c *gin.Context) {
 		default:
 			common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
 		}
+		return
+	}
+	// With password login off only root may sign in this way. Everyone else
+	// gets the wrong-password answer, so the response tells neither whether the
+	// password was right nor which account is root.
+	if !common.PasswordLoginAllowed(user.Role) {
+		common.ApiErrorT(c, "Username or password is incorrect, or user has been banned")
 		return
 	}
 

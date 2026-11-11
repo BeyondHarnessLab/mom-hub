@@ -60,11 +60,20 @@ import { AuthOperationError } from '@/lib/secure-verification'
 import { createServerError } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
 
+type UserAuthFormProps = AuthFormProps & {
+  /**
+   * Show only the username and password, even when the site has password
+   * login off: the root account keeps its password after that switch.
+   */
+  passwordOnly?: boolean
+}
+
 export function UserAuthForm({
   className,
   redirectTo,
+  passwordOnly = false,
   ...props
-}: AuthFormProps) {
+}: UserAuthFormProps) {
   const { t } = useTranslation()
   const [isLoading, setIsLoading] = useState(false)
   const [wechatCode, setWeChatCode] = useState('')
@@ -87,7 +96,8 @@ export function UserAuthForm({
   const passkeyLoginEnabled = Boolean(
     status?.passkey_login ?? status?.data?.passkey_login
   )
-  const passwordLoginEnabled =
+  const showPasswordLogin =
+    passwordOnly ||
     (status?.password_login_enabled ??
       status?.data?.password_login_enabled ??
       true) !== false
@@ -122,6 +132,7 @@ export function UserAuthForm({
   )
   const hasAlternativeLogin =
     passkeyLoginEnabled || hasWeChatLogin || hasOAuthLogin
+  const showAlternativeLogin = !passwordOnly
 
   useEffect(() => {
     if (requiresLegalConsent) {
@@ -349,9 +360,9 @@ export function UserAuthForm({
         className={cn('grid gap-4', className)}
         {...props}
       >
-        {hasAlternativeLogin && alternativeLoginMethods}
+        {showAlternativeLogin && hasAlternativeLogin && alternativeLoginMethods}
 
-        {passwordLoginEnabled && (
+        {showPasswordLogin && (
           <>
             {/* Username Field */}
             <FormField
@@ -426,7 +437,9 @@ export function UserAuthForm({
           className='mt-1'
         />
 
-        {!hasAlternativeLogin && alternativeLoginMethods}
+        {showAlternativeLogin &&
+          !hasAlternativeLogin &&
+          alternativeLoginMethods}
       </form>
 
       {hasWeChatLogin && (

@@ -39,6 +39,7 @@ import type {
   WaffoPaymentResponse,
   WaffoPancakePaymentRequest,
   WaffoPancakePaymentResponse,
+  RoutedModelPrice,
 } from './types'
 
 // ============================================================================
@@ -50,6 +51,16 @@ import type {
  */
 export function isApiSuccess(response: ApiResponse): boolean {
   return response.success === true || response.message === 'success'
+}
+
+/**
+ * Get the models router models can route to, at their own prices
+ */
+export async function getRoutedModelPricing(): Promise<
+  ApiResponse<RoutedModelPrice[]>
+> {
+  const res = await api.get('/api/user/routed_model_pricing')
+  return res.data
 }
 
 /**

@@ -6,6 +6,7 @@ import (
 	"github.com/QuantumNous/new-api/common"
 	"github.com/QuantumNous/new-api/model"
 	"github.com/QuantumNous/new-api/service"
+	"github.com/QuantumNous/new-api/setting/billing_setting"
 	"github.com/QuantumNous/new-api/setting/ratio_setting"
 
 	"github.com/gin-gonic/gin"
@@ -74,6 +75,22 @@ func GetPricing(c *gin.Context) {
 		"auto_groups":        service.GetUserAutoGroup(group),
 		"pricing_version":    "a42d372ccf0b5dd13ecf71203521f9d2",
 	})
+}
+
+// GetRoutedModelPricing lists the models that the router entry models the user
+// can call may settle at, each at its own price: without the router's fee and
+// the user's group ratio.
+func GetRoutedModelPricing(c *gin.Context) {
+	group := ""
+	if user, err := model.GetUserCache(c.GetInt("id")); err == nil {
+		group = user.Group
+	}
+	usable := filterPricingByUsableGroups(model.GetPricing(), service.GetUserUsableGroups(group))
+	entries := make([]string, 0, len(usable))
+	for _, item := range usable {
+		entries = append(entries, item.ModelName)
+	}
+	common.ApiSuccess(c, billing_setting.RoutedModelPrices(entries))
 }
 
 func ResetModelRatio(c *gin.Context) {

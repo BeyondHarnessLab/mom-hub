@@ -104,3 +104,47 @@ func ValidateResponseModelBilling(raw string) error {
 	}
 	return nil
 }
+
+// RoutedModelPrice is a model that router entry models may settle at under
+// their response model billing rules, with the expression of its billing name.
+// The routers' fees are not part of it, and the billing name itself stays
+// admin-only configuration.
+type RoutedModelPrice struct {
+	ModelName   string   `json:"model_name"`
+	Routers     []string `json:"routers"`
+	BillingExpr string   `json:"billing_expr"`
+}
+
+// RoutedModelPrices lists the response models that the given entry models
+// settle at, sorted by model name. A model two routers price the same way is
+// listed once with both routers. Models whose billing name has no token
+// expression price are left out, because they settle at the entry price.
+func RoutedModelPrices(entries []string) []RoutedModelPrice {
+	byKey := map[string]*RoutedModelPrice{}
+	for _, entry := range slices.Sorted(slices.Values(entries)) {
+		rule, ok := GetResponseModelBillingRule(entry)
+		if !ok {
+			continue
+		}
+		for declared, billingModel := range rule.Models {
+			expression, ok := TokenBillingExpr(billingModel)
+			if !ok {
+				continue
+			}
+			key := declared + "\x00" + expression
+			price, ok := byKey[key]
+			if !ok {
+				price = &RoutedModelPrice{ModelName: declared, BillingExpr: expression}
+				byKey[key] = price
+			}
+			if !slices.Contains(price.Routers, entry) {
+				price.Routers = append(price.Routers, entry)
+			}
+		}
+	}
+	prices := make([]RoutedModelPrice, 0, len(byKey))
+	for _, key := range slices.Sorted(maps.Keys(byKey)) {
+		prices = append(prices, *byKey[key])
+	}
+	return prices
+}

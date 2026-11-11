@@ -404,6 +404,7 @@ var reservedRouteNamespaces = []string{
 	"/setup",
 	"/v1/tasks",
 	"/console",
+	"/admin",
 	"/login",
 	"/forbidden",
 	"/sign-in",

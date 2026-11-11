@@ -117,8 +117,6 @@ export function LogStatCards(props: LogStatCardsProps) {
     rpm: stats?.totalCount ?? 0,
     quota: stats?.totalQuota ?? 0,
     tpm: stats?.totalTokens ?? 0,
-    cacheRead: stats?.totalCacheReadTokens ?? 0,
-    cacheCreation: stats?.totalCacheCreationTokens ?? 0,
   }
 
   const items = statCardsConfig.map((config) => {

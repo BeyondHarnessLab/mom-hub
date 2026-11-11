@@ -19,14 +19,12 @@ For commercial licensing, please contact support@quantumnous.com
 import {
   DASHBOARD_CHART_PREFERENCES_STORAGE_KEY,
   DEFAULT_DASHBOARD_CHART_PREFERENCES,
-  DEFAULT_TIME_GRANULARITY,
   EMPTY_DASHBOARD_FILTERS,
   TIME_GRANULARITY_STORAGE_KEY,
   TIME_RANGE_PRESETS,
   TIME_RANGE_BY_GRANULARITY,
 } from '@/features/dashboard/constants'
 import type {
-  ConsumptionDistributionChartType,
   DashboardChartPreferences,
   DashboardFilters,
   ModelAnalyticsChartTab,
@@ -38,15 +36,10 @@ function isTimeGranularity(value: unknown): value is TimeGranularity {
 }
 
 function getLegacySavedGranularity(): TimeGranularity {
-  if (typeof window === 'undefined') return DEFAULT_TIME_GRANULARITY
+  const fallback = DEFAULT_DASHBOARD_CHART_PREFERENCES.defaultTimeGranularity
+  if (typeof window === 'undefined') return fallback
   const saved = localStorage.getItem(TIME_GRANULARITY_STORAGE_KEY)
-  return isTimeGranularity(saved) ? saved : DEFAULT_TIME_GRANULARITY
-}
-
-function isConsumptionDistributionChartType(
-  value: unknown
-): value is ConsumptionDistributionChartType {
-  return value === 'bar' || value === 'area'
+  return isTimeGranularity(saved) ? saved : fallback
 }
 
 function isModelAnalyticsChartTab(
@@ -89,11 +82,6 @@ export function getSavedChartPreferences(): DashboardChartPreferences {
 
     const parsed = JSON.parse(raw) as Partial<DashboardChartPreferences>
     return {
-      consumptionDistributionChart: isConsumptionDistributionChartType(
-        parsed.consumptionDistributionChart
-      )
-        ? parsed.consumptionDistributionChart
-        : fallbackPreferences.consumptionDistributionChart,
       modelAnalyticsChart: isModelAnalyticsChartTab(parsed.modelAnalyticsChart)
         ? parsed.modelAnalyticsChart
         : fallbackPreferences.modelAnalyticsChart,

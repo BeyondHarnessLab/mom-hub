@@ -16,7 +16,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
-import { Activity, BarChart3, WalletCards } from 'lucide-react'
+import { BarChart3, WalletCards } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
 import { IconBadge, type IconBadgeTone } from '@/components/ui/icon-badge'
@@ -34,8 +34,8 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
   const { t } = useTranslation()
   if (props.loading) {
     return (
-      <div className='surface-sheet grid grid-cols-3 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
-        {['balance', 'usage', 'requests'].map((key) => (
+      <div className='surface-sheet grid grid-cols-2 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
+        {['balance', 'usage'].map((key) => (
           <div key={key} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
             <Skeleton className='h-3.5 w-full' />
             <Skeleton className='mt-2 h-6 w-full sm:h-7' />
@@ -67,17 +67,10 @@ export function WalletStatsCard(props: WalletStatsCardProps) {
       icon: BarChart3,
       tone: 'info',
     },
-    {
-      label: t('API Requests'),
-      value: (props.user?.request_count ?? 0).toLocaleString(),
-      description: t('Total requests made'),
-      icon: Activity,
-      tone: 'chart-4',
-    },
   ]
 
   return (
-    <div className='surface-sheet grid grid-cols-3 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
+    <div className='surface-sheet grid grid-cols-2 divide-x rounded-lg border bg-[var(--sheet-bg,transparent)] shadow-[var(--sheet-shadow,0_0_#0000)]'>
       {stats.map((item) => (
         <div key={item.label} className='min-w-0 px-2.5 py-2.5 sm:px-5 sm:py-4'>
           <div className='flex items-center gap-1.5 sm:gap-2.5'>

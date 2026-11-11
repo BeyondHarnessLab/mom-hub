@@ -206,6 +206,13 @@ func IsValidateRole(role int) bool {
 	return role == RoleGuestUser || role == RoleCommonUser || role == RoleAdminUser || role == RoleRootUser
 }
 
+// PasswordLoginAllowed reports whether a user of role may authenticate with a
+// password. Turning password login off leaves the root user's password usable,
+// so the site keeps a way in that depends on no third-party sign-in.
+func PasswordLoginAllowed(role int) bool {
+	return PasswordLoginEnabled || role == RoleRootUser
+}
+
 var (
 	FileUploadPermission    = RoleGuestUser
 	FileDownloadPermission  = RoleGuestUser

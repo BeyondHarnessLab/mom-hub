@@ -47,7 +47,7 @@ export function Profile() {
 
   return (
     <SectionPageLayout>
-      <SectionPageLayout.Title>{t('Profile')}</SectionPageLayout.Title>
+      <SectionPageLayout.Title>{t('Settings')}</SectionPageLayout.Title>
       <SectionPageLayout.Content>
         <CardStaggerContainer className='mx-auto flex w-full max-w-2xl flex-col gap-8 pt-2 pb-6'>
           <CardStaggerItem>

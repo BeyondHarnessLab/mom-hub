@@ -30,6 +30,16 @@ export interface ApiResponse<T = unknown> {
 }
 
 /**
+ * A model that router models such as nvrouter/auto can route a request to,
+ * with that model's own price expression. The routers' fees are not in it.
+ */
+export interface RoutedModelPrice {
+  model_name: string
+  routers: string[]
+  billing_expr: string
+}
+
+/**
  * Standard API response types
  */
 export type TopupInfoResponse = ApiResponse<TopupInfo>

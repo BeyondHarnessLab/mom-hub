@@ -136,23 +136,6 @@ export function ProfileSettings({
     <div className='flex flex-col gap-8'>
       <SettingsGroup title={t('Preferences')}>
         <LanguagePreferences profile={profile} onProfileUpdate={onUpdate} />
-        <SettingsRow orientation='horizontal'>
-          <FieldContent>
-            <FieldLabel htmlFor='acceptUnsetPrice'>
-              {t('Accept Unpriced Models')}
-            </FieldLabel>
-            <FieldDescription className='text-xs'>
-              {t('Allow using models without price configuration')}
-            </FieldDescription>
-          </FieldContent>
-          <Switch
-            id='acceptUnsetPrice'
-            checked={settings.accept_unset_model_ratio_model}
-            onCheckedChange={(checked) =>
-              updateField('accept_unset_model_ratio_model', checked)
-            }
-          />
-        </SettingsRow>
       </SettingsGroup>
 
       <SettingsGroup title={t('Notifications')}>

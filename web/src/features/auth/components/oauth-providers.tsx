@@ -154,7 +154,7 @@ export function OAuthProviders({
         </div>
         <div className='relative flex justify-center text-xs uppercase'>
           <span className='bg-card text-muted-foreground px-2'>
-            {t('Or continue with')}
+            {t('Continue with')}
           </span>
         </div>
       </div>

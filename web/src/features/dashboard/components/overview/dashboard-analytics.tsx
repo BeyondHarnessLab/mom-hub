@@ -36,6 +36,7 @@ import { getRollingDateRange, type TimeGranularity } from '@/lib/time'
 import { useAuthStore } from '@/stores/auth-store'
 
 import {
+  DASHBOARD_CARD_CLASS_NAME,
   DEFAULT_TIME_GRANULARITY,
   EMPTY_DASHBOARD_FILTERS,
   TIME_RANGE_PRESETS,
@@ -86,10 +87,9 @@ const LazyUserCharts = lazy(() =>
 
 function ChartsFallback() {
   return (
-    <div className='overflow-hidden rounded-lg border'>
-      <div className='flex items-center justify-between border-b px-4 py-3 sm:px-5'>
+    <div className={DASHBOARD_CARD_CLASS_NAME}>
+      <div className='flex items-center border-b px-4 py-3 sm:px-5'>
         <Skeleton className='h-5 w-32' />
-        <Skeleton className='h-8 w-72' />
       </div>
       <div className='h-96 p-2'>
         <Skeleton className='h-full w-full' />
@@ -166,7 +166,7 @@ export function DashboardAnalytics() {
       <FadeIn>
         <section
           aria-labelledby={titleId}
-          className='bg-card surface-sheet overflow-hidden rounded-2xl border shadow-[var(--sheet-shadow,0_1px_2px_0_rgb(0_0_0/0.05))]'
+          className={DASHBOARD_CARD_CLASS_NAME}
         >
           <div className='grid xl:grid-cols-[minmax(0,1fr)_19rem]'>
             <div className='flex min-w-0 flex-col gap-2.5 p-3 sm:gap-3 sm:p-5'>
@@ -252,7 +252,6 @@ export function DashboardAnalytics() {
             <LazyConsumptionDistributionChart
               data={modelData}
               loading={dataLoading}
-              defaultChartType={chartPreferences.consumptionDistributionChart}
               timeGranularity={
                 modelFilters.time_granularity || DEFAULT_TIME_GRANULARITY
               }

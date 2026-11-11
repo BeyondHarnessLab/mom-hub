@@ -51,7 +51,7 @@ afterEach(() => {
   vi.restoreAllMocks()
 })
 
-it('the console header keeps the language switcher and has no theme settings button', async () => {
+it('the console header keeps the language switcher and has no theme settings or search button', async () => {
   const router = createRouter({
     routeTree: createRootRoute({ component: AppHeader }),
     history: createMemoryHistory({ initialEntries: ['/'] }),
@@ -78,5 +78,8 @@ it('the console header keeps the language switcher and has no theme settings but
   ).toBeVisible()
   expect(
     screen.queryByRole('button', { name: 'Open theme settings' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Search' })
   ).not.toBeInTheDocument()
 })

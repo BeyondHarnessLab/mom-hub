@@ -50,6 +50,17 @@ describe('OAuthProviders custom provider buttons', () => {
     )
   })
 
+  it('labels the provider list "Continue with", without a leading "Or"', () => {
+    render(
+      <OAuthProviders
+        status={{ custom_oauth_providers: [customProvider('')] }}
+      />
+    )
+
+    expect(screen.getByText('Continue with')).toBeVisible()
+    expect(screen.queryByText(/^Or continue with$/i)).not.toBeInTheDocument()
+  })
+
   it('shows only the label when a custom provider has no icon', () => {
     render(
       <OAuthProviders

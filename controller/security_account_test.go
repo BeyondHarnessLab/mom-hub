@@ -16,6 +16,7 @@ import (
 	"net/http/httptest"
 	"net/textproto"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -537,6 +538,70 @@ func TestSecurityAccountPasswordPolicyAndHashCompatibility(t *testing.T) {
 	assert.True(t, common.ValidatePasswordAndHash("123456", legacy), "login preserves historical passwords without applying new policy")
 	for _, invalid := range []string{"$argon2id$", "$argon2id$v=19$m=4294967295,t=2,p=1$bad$bad", "$argon2id$v=19$m=19456,t=2,p=1$bad$bad"} {
 		assert.False(t, common.ValidatePasswordAndHash("example-password", invalid))
+	}
+}
+
+func TestSecurityAccountPasswordLoginOffAdmitsOnlyRoot(t *testing.T) {
+	user, identity := setupSecurityEnrollmentTest(t)
+	previous := common.PasswordLoginEnabled
+	common.PasswordLoginEnabled = false
+	t.Cleanup(func() { common.PasswordLoginEnabled = previous })
+
+	refusals := map[string]string{}
+	for _, attempt := range []struct {
+		name, username, password string
+		role                     int
+	}{
+		{"unknown user", "nobody", "enrollment-password", common.RoleRootUser},
+		{"common user with the right password", user.Username, "enrollment-password", common.RoleCommonUser},
+		{"admin with the right password", user.Username, "enrollment-password", common.RoleAdminUser},
+		{"root with a wrong password", user.Username, "wrong-password", common.RoleRootUser},
+	} {
+		require.NoError(t, model.DB.Model(user).Update("role", attempt.role).Error)
+		request, err := common.Marshal(LoginRequest{Username: attempt.username, Password: attempt.password})
+		require.NoError(t, err)
+		refusals[attempt.name] = securityEnrollmentRequest("POST", "/api/user/login", string(request), "", identity, Login).Body.String()
+	}
+	for name, body := range refusals {
+		assert.Contains(t, body, `"success":false`, name)
+		assert.Equal(t, refusals["unknown user"], body, "%s must read like an unknown user", name)
+	}
+	var sessions int64
+	require.NoError(t, model.DB.Model(&model.UserSession{}).Where("user_id = ?", user.Id).Count(&sessions).Error)
+	assert.EqualValues(t, 1, sessions, "a refused login must not open a session")
+
+	require.NoError(t, model.DB.Model(user).Update("role", common.RoleRootUser).Error)
+	request, err := common.Marshal(LoginRequest{Username: user.Username, Password: "enrollment-password"})
+	require.NoError(t, err)
+	response := securityEnrollmentRequest("POST", "/api/user/login", string(request), "", identity, Login)
+	var result securityEnrollmentResponse
+	require.NoError(t, common.Unmarshal(response.Body.Bytes(), &result))
+	require.True(t, result.Success, response.Body.String())
+	assert.Contains(t, string(result.Data), `"access_token"`)
+}
+
+func TestSecurityAccountPasswordLoginOffKeepsRootPasswordVerification(t *testing.T) {
+	for _, test := range []struct {
+		role      int
+		available bool
+	}{
+		{common.RoleCommonUser, false},
+		{common.RoleAdminUser, false},
+		{common.RoleRootUser, true},
+	} {
+		t.Run(strconv.Itoa(test.role), func(t *testing.T) {
+			user, identity := setupSecurityEnrollmentTest(t)
+			previous := common.PasswordLoginEnabled
+			common.PasswordLoginEnabled = false
+			t.Cleanup(func() { common.PasswordLoginEnabled = previous })
+			require.NoError(t, model.DB.Model(user).Update("role", test.role).Error)
+
+			requirements, err := service.GetVerificationRequirements(identity, service.VerificationScopePasswordChange)
+			require.NoError(t, err)
+			require.Len(t, requirements.Methods, 1)
+			assert.Equal(t, service.VerificationMethodPassword, requirements.Methods[0].Method)
+			assert.Equal(t, test.available, requirements.Methods[0].Available)
+		})
 	}
 }
 

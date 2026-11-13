@@ -7368,6 +7368,13 @@
     "Open from a new API key": "請從新建的 API 金鑰開啟",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} 需要完整的 API 金鑰，而完整金鑰只在建立時顯示一次。請新建一個金鑰，然後在隨後彈出的視窗中開啟 {{name}}。",
     "Go to API keys": "前往 API 金鑰",
-    "Paste a full API key...": "貼上完整的 API 金鑰..."
+    "Paste a full API key...": "貼上完整的 API 金鑰...",
+    "Version {{version}}": "版本 {{version}}",
+    "Effective {{date}}": "生效日期 {{date}}",
+    "Terms of Service version {{version}}": "《服務條款》版本 {{version}}",
+    "Privacy Policy version {{version}}": "《隱私政策》版本 {{version}}",
+    "By paying, you agree to the": "付款即表示你同意",
+    ", effective {{date}}": "，生效日期 {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "該版本會隨訂單記錄。條款更新後繼續使用即視為接受更新後的版本。"
   }
 }

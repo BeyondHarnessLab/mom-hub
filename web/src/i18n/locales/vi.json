@@ -7368,6 +7368,13 @@
     "Open from a new API key": "Hãy mở từ khóa API mới",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} cần khóa API đầy đủ, và khóa đầy đủ chỉ hiển thị một lần khi tạo. Hãy tạo khóa mới rồi mở {{name}} từ hộp thoại hiện ra sau đó.",
     "Go to API keys": "Đến trang khóa API",
-    "Paste a full API key...": "Dán khóa API đầy đủ..."
+    "Paste a full API key...": "Dán khóa API đầy đủ...",
+    "Version {{version}}": "Phiên bản {{version}}",
+    "Effective {{date}}": "Có hiệu lực từ {{date}}",
+    "Terms of Service version {{version}}": "Điều khoản Dịch vụ phiên bản {{version}}",
+    "Privacy Policy version {{version}}": "Chính sách Bảo mật phiên bản {{version}}",
+    "By paying, you agree to the": "Khi thanh toán, bạn đồng ý với",
+    ", effective {{date}}": ", có hiệu lực từ {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "Phiên bản này được ghi lại cùng đơn hàng. Tiếp tục sử dụng sau khi cập nhật nghĩa là bạn chấp nhận phiên bản đã cập nhật."
   }
 }

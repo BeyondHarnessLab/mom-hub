@@ -7368,6 +7368,13 @@
     "Open from a new API key": "Ouvrez-la depuis une nouvelle clé API",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} a besoin d'une clé API complète, qui n'est affichée qu'une seule fois à sa création. Créez une clé, puis ouvrez {{name}} depuis la fenêtre qui s'affiche ensuite.",
     "Go to API keys": "Aller aux clés API",
-    "Paste a full API key...": "Collez une clé API complète..."
+    "Paste a full API key...": "Collez une clé API complète...",
+    "Version {{version}}": "Version {{version}}",
+    "Effective {{date}}": "En vigueur le {{date}}",
+    "Terms of Service version {{version}}": "Conditions d'utilisation, version {{version}}",
+    "Privacy Policy version {{version}}": "Politique de confidentialité, version {{version}}",
+    "By paying, you agree to the": "En payant, vous acceptez les",
+    ", effective {{date}}": ", en vigueur le {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "Cette version est enregistrée avec votre commande. Continuer à utiliser le service après une mise à jour vaut acceptation de la version mise à jour."
   }
 }

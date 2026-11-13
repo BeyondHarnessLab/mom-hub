@@ -124,6 +124,7 @@ func (*CreemAdaptor) RequestPay(c *gin.Context, req *CreemPayRequest) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
+	recordCheckoutLegalAcceptance(c, user, topUp)
 	err = topUp.Insert()
 	if err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Creem failed to create top-up order user_id=%d trade_no=%s product_id=%s error=%q", id, referenceId, selectedProduct.ProductId, err.Error()))

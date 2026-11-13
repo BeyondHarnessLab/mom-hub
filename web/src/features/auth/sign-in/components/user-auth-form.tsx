@@ -116,7 +116,10 @@ export function UserAuthForm({
 
   const hasUserAgreement = Boolean(status?.user_agreement_enabled)
   const hasPrivacyPolicy = Boolean(status?.privacy_policy_enabled)
-  const requiresLegalConsent = hasUserAgreement || hasPrivacyPolicy
+  // The password-only form is the root account's sign-in (/admin). Signing in
+  // is not a new agreement, so it neither shows the box nor waits for it.
+  const requiresLegalConsent =
+    !passwordOnly && (hasUserAgreement || hasPrivacyPolicy)
   const passkeyButtonDisabled =
     isPasskeyLoading ||
     !passkeySupported ||
@@ -347,6 +350,7 @@ export function UserAuthForm({
         status={status}
         redirectTo={redirectTo}
         disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
+        legalConsent={agreedToLegal}
         onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
         isWeChatLoading={isWeChatSubmitting}
       />
@@ -430,12 +434,14 @@ export function UserAuthForm({
           </>
         )}
 
-        <LegalConsent
-          status={status}
-          checked={agreedToLegal}
-          onCheckedChange={setAgreedToLegal}
-          className='mt-1'
-        />
+        {requiresLegalConsent && (
+          <LegalConsent
+            status={status}
+            checked={agreedToLegal}
+            onCheckedChange={setAgreedToLegal}
+            className='mt-1'
+          />
+        )}
 
         {showAlternativeLogin &&
           !hasAlternativeLogin &&

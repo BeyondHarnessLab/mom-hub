@@ -175,7 +175,8 @@ export async function createOAuthAuthorization(
   intent: 'login' | 'bind' | 'verify',
   operation?: VerificationOperation,
   signal?: AbortSignal,
-  proofToken?: string
+  proofToken?: string,
+  legalConsent?: boolean
 ): Promise<{ state: string; authorizationUrl?: string }> {
   const aff = intent === 'login' ? getAffiliateCode() : ''
   const res = await api.post(
@@ -186,6 +187,7 @@ export async function createOAuthAuthorization(
       aff: aff || undefined,
       scope: operation?.scope,
       ...(operation?.context ? { context: operation.context } : {}),
+      ...(legalConsent ? { legal_consent: true } : {}),
     },
     {
       skipAuthRefresh: intent === 'login',
@@ -217,10 +219,19 @@ export async function createOAuthFlow(
   provider: string,
   intent: 'login' | 'bind' | 'verify',
   operation?: VerificationOperation,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  legalConsent?: boolean
 ): Promise<string> {
-  return (await createOAuthAuthorization(provider, intent, operation, signal))
-    .state
+  return (
+    await createOAuthAuthorization(
+      provider,
+      intent,
+      operation,
+      signal,
+      undefined,
+      legalConsent
+    )
+  ).state
 }
 
 // WeChat login by authorization code

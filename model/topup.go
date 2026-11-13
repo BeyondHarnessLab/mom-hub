@@ -23,6 +23,20 @@ type TopUp struct {
 	CreateTime      int64   `json:"create_time"`
 	CompleteTime    int64   `json:"complete_time"`
 	Status          string  `json:"status"`
+
+	// LegalEvidence freezes the legal document versions in force when the order
+	// was created. Both the version and the content hash are stored, so a later
+	// rewrite of the live text cannot change what this order proves. The columns
+	// are written once at insert and never updated.
+	TermsVersion       string `json:"terms_version" gorm:"type:varchar(32);default:''"`
+	TermsSha256        string `json:"terms_sha256" gorm:"type:varchar(64);default:''"`
+	TermsEffectiveAt   int64  `json:"terms_effective_at" gorm:"type:bigint;default:0"`
+	TermsDocUrl        string `json:"terms_doc_url" gorm:"type:varchar(255);default:''"`
+	PrivacyVersion     string `json:"privacy_version" gorm:"type:varchar(32);default:''"`
+	PrivacySha256      string `json:"privacy_sha256" gorm:"type:varchar(64);default:''"`
+	PrivacyEffectiveAt int64  `json:"privacy_effective_at" gorm:"type:bigint;default:0"`
+	PrivacyDocUrl      string `json:"privacy_doc_url" gorm:"type:varchar(255);default:''"`
+	LegalAcceptedAt    int64  `json:"legal_accepted_at" gorm:"type:bigint;default:0"`
 }
 
 const (

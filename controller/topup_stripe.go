@@ -109,13 +109,6 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 	reference := fmt.Sprintf("new-api-ref-%d-%d-%s", user.Id, time.Now().UnixMilli(), randstr.String(4))
 	referenceId := "ref_" + common.Sha1([]byte(reference))
 
-	payLink, err := genStripeLink(referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL)
-	if err != nil {
-		logger.LogError(c.Request.Context(), common.LogText("Stripe failed to create Checkout Session user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
-		paymentError(c, common.NewMessage("Failed to start payment"))
-		return
-	}
-
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          req.Amount,
@@ -126,6 +119,17 @@ func (*StripeAdaptor) RequestPay(c *gin.Context, req *StripePayRequest) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
+	// The version metadata travels to Stripe with the Checkout Session, so the
+	// charge carries the evidence on Stripe's side as well as ours.
+	recordCheckoutLegalAcceptance(c, user, topUp)
+
+	payLink, err := genStripeLink(referenceId, user.StripeCustomer, user.Email, req.Amount, req.SuccessURL, req.CancelURL, legalEvidenceMetadata(topUp))
+	if err != nil {
+		logger.LogError(c.Request.Context(), common.LogText("Stripe failed to create Checkout Session user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
+		paymentError(c, common.NewMessage("Failed to start payment"))
+		return
+	}
+
 	err = topUp.Insert()
 	if err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Stripe failed to create top-up order user_id=%d trade_no=%s amount=%d error=%q", id, referenceId, req.Amount, err.Error()))
@@ -355,7 +359,27 @@ func sessionExpired(ctx context.Context, event stripe.Event) {
 //   - cancelURL: custom URL to redirect when payment is canceled (empty for default)
 //
 // Returns the checkout session URL or an error if the session creation fails.
-func genStripeLink(referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string) (string, error) {
+// legalEvidenceMetadata returns the Stripe metadata keys that record which
+// legal document versions the order was created under. Stripe caps metadata
+// keys at 40 characters; these all fit.
+func legalEvidenceMetadata(topUp *model.TopUp) map[string]string {
+	metadata := make(map[string]string, 6)
+	if topUp.TermsVersion != "" {
+		metadata["terms_version"] = topUp.TermsVersion
+		metadata["terms_sha256"] = topUp.TermsSha256
+		metadata["terms_effective_at"] = strconv.FormatInt(topUp.TermsEffectiveAt, 10)
+	}
+	if topUp.PrivacyVersion != "" {
+		metadata["privacy_version"] = topUp.PrivacyVersion
+		metadata["privacy_sha256"] = topUp.PrivacySha256
+	}
+	if topUp.LegalAcceptedAt > 0 {
+		metadata["legal_accepted_at"] = strconv.FormatInt(topUp.LegalAcceptedAt, 10)
+	}
+	return metadata
+}
+
+func genStripeLink(referenceId string, customerId string, email string, amount int64, successURL string, cancelURL string, legalMetadata map[string]string) (string, error) {
 	if !strings.HasPrefix(setting.StripeApiSecret, "sk_") && !strings.HasPrefix(setting.StripeApiSecret, "rk_") {
 		return "", errors.New("invalid Stripe API key")
 	}
@@ -382,6 +406,14 @@ func genStripeLink(referenceId string, customerId string, email string, amount i
 		},
 		Mode:                stripe.String(string(stripe.CheckoutSessionModePayment)),
 		AllowPromotionCodes: stripe.Bool(setting.StripePromotionCodesEnabled),
+	}
+	if len(legalMetadata) > 0 {
+		// Metadata on the session and on the payment intent: the intent is what
+		// a chargeback is filed against.
+		params.Metadata = legalMetadata
+		params.PaymentIntentData = &stripe.CheckoutSessionPaymentIntentDataParams{
+			Metadata: legalMetadata,
+		}
 	}
 
 	if "" == customerId {

@@ -192,11 +192,11 @@ func GetAbout(c *gin.Context) {
 }
 
 func GetUserAgreement(c *gin.Context) {
-	serveRevalidatedJSON(c, system_setting.GetLegalSettings().UserAgreement)
+	serveRevalidatedJSONWithLegal(c, system_setting.GetLegalSettings().UserAgreement, activeLegalMeta(model.LegalDocTypeTerms))
 }
 
 func GetPrivacyPolicy(c *gin.Context) {
-	serveRevalidatedJSON(c, system_setting.GetLegalSettings().PrivacyPolicy)
+	serveRevalidatedJSONWithLegal(c, system_setting.GetLegalSettings().PrivacyPolicy, activeLegalMeta(model.LegalDocTypePrivacy))
 }
 
 func GetMidjourney(c *gin.Context) {

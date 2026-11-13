@@ -17,13 +17,12 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Loader2, MessageCircleWarning } from 'lucide-react'
+import { MessageCircleWarning } from 'lucide-react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { useActiveChatKey } from '@/features/chat/hooks/use-active-chat-key'
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import {
   chatLinkRequiresApiKey,
@@ -56,22 +55,10 @@ function ChatRouteComponent() {
     return chatLinkRequiresApiKey(preset.url ?? '')
   }, [isWebLink, preset])
 
-  const {
-    data: activeKey,
-    isPending,
-    isError,
-    error,
-  } = useActiveChatKey(Boolean(preset && requiresActiveKey))
-
   const iframeSrc = useMemo(() => {
-    if (!preset || !isWebLink) return ''
-    if (requiresActiveKey && !activeKey) return ''
-    return resolveChatUrl({
-      template: preset.url,
-      apiKey: requiresActiveKey ? activeKey : undefined,
-      serverAddress,
-    })
-  }, [activeKey, isWebLink, preset, requiresActiveKey, serverAddress])
+    if (!preset || !isWebLink || requiresActiveKey) return ''
+    return resolveChatUrl({ template: preset.url, serverAddress })
+  }, [isWebLink, preset, requiresActiveKey, serverAddress])
 
   if (!preset) {
     return (
@@ -112,33 +99,31 @@ function ChatRouteComponent() {
     )
   }
 
-  if (requiresActiveKey && isPending) {
+  // The full API key is shown only once, when it is created, so a chat link
+  // that embeds it can only be opened from that dialog.
+  if (requiresActiveKey) {
     return (
-      <div className='flex h-full flex-col items-center justify-center gap-4'>
-        <Loader2 className='text-muted-foreground h-8 w-8 animate-spin' />
-        <p className='text-muted-foreground text-sm'>
-          {t('Preparing your chat link…')}
-        </p>
+      <div className='flex h-full flex-col items-center justify-center gap-4 p-6 text-center'>
+        <MessageCircleWarning className='text-muted-foreground h-12 w-12' />
+        <div className='space-y-1'>
+          <h2 className='text-lg font-semibold'>
+            {t('Open from a new API key')}
+          </h2>
+          <p className='text-muted-foreground'>
+            {t(
+              '{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.',
+              { name: preset.name }
+            )}
+          </p>
+        </div>
+        <Button variant='outline' render={<Link to='/keys' />}>
+          {t('Go to API keys')}
+        </Button>
       </div>
     )
   }
 
-  if (requiresActiveKey && (isError || !activeKey || !iframeSrc)) {
-    const message =
-      error instanceof Error
-        ? error.message
-        : 'Unable to generate chat link. Please check your API keys.'
-    return (
-      <div className='flex h-full flex-col items-center justify-center p-6'>
-        <Alert variant='destructive' className='max-w-xl'>
-          <AlertTitle>{t('Unable to open chat')}</AlertTitle>
-          <AlertDescription>{message}</AlertDescription>
-        </Alert>
-      </div>
-    )
-  }
-
-  if (!requiresActiveKey && !iframeSrc) {
+  if (!iframeSrc) {
     return (
       <div className='flex h-full flex-col items-center justify-center p-6'>
         <Alert variant='destructive' className='max-w-xl'>

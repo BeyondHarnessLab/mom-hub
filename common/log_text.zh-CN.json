@@ -618,6 +618,7 @@
   "getAndValidateTextRequest failed: %s": "getAndValidateTextRequest 失败: %s",
   "get_channel_null: %s": "查询渠道失败: %s",
   "group ratio not found: %s": "未找到分组倍率: %s",
+  "hashed %d plaintext token keys": "已将 %d 个明文 API 令牌改为哈希存储",
   "hourly user session issuance exceeded alert threshold: count=%d threshold=%d window_seconds=%d": "近一小时新建的登录会话数超过告警阈值: count=%d threshold=%d window_seconds=%d",
   "http error on %s: %s": "请求 %s 出错: %s",
   "http transport negotiated: host=%s protocol=%s shards=%d policy=%s negotiated=%s": "HTTP 连接协商结果: host=%s protocol=%s shards=%d policy=%s negotiated=%s",

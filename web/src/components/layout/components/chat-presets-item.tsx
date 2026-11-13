@@ -17,8 +17,8 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { Link, useLocation } from '@tanstack/react-router'
-import { ExternalLink, Loader2, ChevronRight } from 'lucide-react'
-import { useMemo, useCallback, useRef, useState } from 'react'
+import { ExternalLink, ChevronRight } from 'lucide-react'
+import { useMemo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 
@@ -41,14 +41,12 @@ import {
   SidebarMenuSubItem,
   useSidebar,
 } from '@/components/ui/sidebar'
-import { fetchActiveChatKey } from '@/features/chat/hooks/use-active-chat-key'
 import { useChatPresets } from '@/features/chat/hooks/use-chat-presets'
 import {
   chatLinkRequiresApiKey,
   resolveChatUrl,
   type ChatPreset,
 } from '@/features/chat/lib/chat-links'
-import { handleServerError } from '@/lib/handle-server-error'
 
 import { normalizeHref } from '../lib/url-utils'
 import type { NavChatPresets } from '../types'
@@ -59,15 +57,13 @@ import type { NavChatPresets } from '../types'
 function ChatMenuItem({
   preset,
   active,
-  loading,
   onOpen,
   onNavigate,
   preload,
 }: {
   preset: ChatPreset
   active: boolean
-  loading: boolean
-  onOpen: (preset: ChatPreset) => void | Promise<void>
+  onOpen: (preset: ChatPreset) => void
   onNavigate: () => void
   preload?: false
 }) {
@@ -96,21 +92,14 @@ function ChatMenuItem({
   return (
     <SidebarMenuSubItem>
       <SidebarMenuSubButton
-        onClick={() => {
-          if (!loading) void onOpen(preset)
-        }}
-        aria-disabled={loading ? 'true' : undefined}
+        onClick={() => onOpen(preset)}
         isActive={false}
         className='justify-between'
       >
         <span className='min-w-0 flex-1 truncate whitespace-nowrap'>
           {preset.name}
         </span>
-        {loading ? (
-          <Loader2 className='h-4 w-4 shrink-0 animate-spin' />
-        ) : (
-          <ExternalLink className='h-4 w-4 shrink-0' />
-        )}
+        <ExternalLink className='h-4 w-4 shrink-0' />
       </SidebarMenuSubButton>
     </SidebarMenuSubItem>
   )
@@ -121,12 +110,10 @@ function ChatMenuItem({
  */
 function DropdownPresetItem({
   preset,
-  loading,
   onOpen,
 }: {
   preset: ChatPreset
-  loading: boolean
-  onOpen: (preset: ChatPreset) => void | Promise<void>
+  onOpen: (preset: ChatPreset) => void
 }) {
   if (preset.type === 'web') {
     return (
@@ -139,18 +126,9 @@ function DropdownPresetItem({
   }
 
   return (
-    <DropdownMenuItem
-      disabled={loading}
-      onClick={() => {
-        if (!loading) void onOpen(preset)
-      }}
-    >
+    <DropdownMenuItem onClick={() => onOpen(preset)}>
       {preset.name}
-      {loading ? (
-        <Loader2 className='ml-auto h-4 w-4 animate-spin opacity-70' />
-      ) : (
-        <ExternalLink className='ml-auto h-4 w-4 opacity-70' />
-      )}
+      <ExternalLink className='ml-auto h-4 w-4 opacity-70' />
     </DropdownMenuItem>
   )
 }
@@ -163,52 +141,23 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
   const { chatPresets, serverAddress } = useChatPresets()
   const { state, isMobile, setOpenMobile } = useSidebar()
   const href = useLocation({ select: (location) => location.href })
-  const [loadingPresetId, setLoadingPresetId] = useState<string | null>(null)
-  const loadingPresetIdRef = useRef<string | null>(null)
 
+  // Presets that embed the API key can only be opened from the dialog shown
+  // once after a key is created, so the sidebar lists the others.
   const visiblePresets = useMemo(
-    () => chatPresets.filter((preset) => preset.type !== 'fluent'),
+    () =>
+      chatPresets.filter(
+        (preset) =>
+          preset.type !== 'fluent' && !chatLinkRequiresApiKey(preset.url)
+      ),
     [chatPresets]
   )
 
   const handleOpenExternal = useCallback(
-    async (preset: ChatPreset) => {
+    (preset: ChatPreset) => {
       if (preset.type === 'web') return
 
-      const needsKey = chatLinkRequiresApiKey(preset.url)
-      let activeKey: string | undefined
-
-      if (needsKey && loadingPresetIdRef.current) {
-        toast.info(t('Preparing your chat link, please try again in a moment.'))
-        return
-      }
-
-      if (needsKey) {
-        loadingPresetIdRef.current = preset.id
-        setLoadingPresetId(preset.id)
-        try {
-          activeKey = await fetchActiveChatKey()
-        } catch (error) {
-          const message =
-            error instanceof Error
-              ? error.message
-              : t(
-                  'Unable to prepare chat link. Please ensure you have an enabled API key.'
-                )
-          handleServerError(error, message)
-          return
-        } finally {
-          loadingPresetIdRef.current = null
-          setLoadingPresetId(null)
-        }
-      }
-
-      const url = resolveChatUrl({
-        template: preset.url,
-        apiKey: needsKey ? activeKey : undefined,
-        serverAddress,
-      })
-
+      const url = resolveChatUrl({ template: preset.url, serverAddress })
       if (!url) {
         toast.error(t('Invalid chat link. Please contact the administrator.'))
         return
@@ -246,7 +195,6 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
               <DropdownPresetItem
                 key={preset.id}
                 preset={preset}
-                loading={loadingPresetId === preset.id}
                 onOpen={handleOpenExternal}
               />
             ))}
@@ -278,7 +226,6 @@ export function ChatPresetsItem({ item }: { item: NavChatPresets }) {
               key={preset.id}
               preset={preset}
               active={normalizedHref === `/chat/${preset.id}`}
-              loading={loadingPresetId === preset.id}
               onOpen={handleOpenExternal}
               onNavigate={() => setOpenMobile(false)}
               preload={isMobile ? false : undefined}

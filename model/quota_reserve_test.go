@@ -208,7 +208,7 @@ func TestSynchronousReserveCompensatesCacheWhenPersistenceFails(t *testing.T) {
 	assert.Equal(t, 10, cached.Quota)
 
 	token := createReserveTestToken(t, 12)
-	_, err = GetTokenByKey(token.Key, true)
+	_, err = GetTokenByKeyHash(token.Key, true)
 	require.NoError(t, err)
 	require.NoError(t, DB.Delete(&token).Error)
 	reserved, err = TryReserveTokenQuota(token.Id, token.Key, 7, false)
@@ -226,7 +226,7 @@ func TestTokenCacheInitPreservesLiveQuotaAndFenceBlocksStaleSnapshot(t *testing.
 	server := useUserCacheMiniRedis(t)
 
 	token := createReserveTestToken(t, 100)
-	loaded, err := GetTokenByKey(token.Key, true)
+	loaded, err := GetTokenByKeyHash(token.Key, true)
 	require.NoError(t, err)
 	stale := *loaded
 
@@ -252,7 +252,7 @@ func TestTokenCacheInitPreservesLiveQuotaAndFenceBlocksStaleSnapshot(t *testing.
 
 	// fence 过期后可重新从数据库水合。
 	server.FastForward(time.Duration(tokenCacheFenceSeconds+1) * time.Second)
-	fresh, err := GetTokenByKey(token.Key, false)
+	fresh, err := GetTokenByKeyHash(token.Key, false)
 	require.NoError(t, err)
 	assert.Equal(t, 100, fresh.RemainQuota)
 	cached, err = cacheGetTokenByKey(token.Key)

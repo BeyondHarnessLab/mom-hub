@@ -68,7 +68,7 @@ func TestTokenUpdateSynchronouslyNarrowsPreheatedAutoGroupsCache(t *testing.T) {
 	// 宽分组值，下一次读取必须看到收紧后的分组。
 	_, cacheErr := cacheGetTokenByKey(token.Key)
 	require.Error(t, cacheErr, "the pre-update cache entry must be invalidated")
-	reloaded, err := GetTokenByKey(token.Key, false)
+	reloaded, err := GetTokenByKeyHash(token.Key, false)
 	require.NoError(t, err)
 	assert.JSONEq(t, `["vip"]`, reloaded.AutoGroups)
 }

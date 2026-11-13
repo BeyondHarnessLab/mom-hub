@@ -7359,6 +7359,15 @@
     "Model calls": "Lệnh gọi mô hình",
     "Aggregator": "Bộ tổng hợp",
     "Advisor": "Cố vấn",
-    "Analyst": "Nhà phân tích"
+    "Analyst": "Nhà phân tích",
+    "Save your API key": "Lưu khóa API của bạn",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "Khóa đầy đủ chỉ hiển thị một lần này. Hãy lưu ở nơi an toàn. Nếu bị mất, hãy xóa khóa này và tạo khóa mới.",
+    "I've saved it": "Tôi đã lưu",
+    "Use it in an app": "Dùng trong ứng dụng",
+    "Copy curl": "Sao chép lệnh curl",
+    "Open from a new API key": "Hãy mở từ khóa API mới",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} cần khóa API đầy đủ, và khóa đầy đủ chỉ hiển thị một lần khi tạo. Hãy tạo khóa mới rồi mở {{name}} từ hộp thoại hiện ra sau đó.",
+    "Go to API keys": "Đến trang khóa API",
+    "Paste a full API key...": "Dán khóa API đầy đủ..."
   }
 }

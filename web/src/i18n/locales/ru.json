@@ -7359,6 +7359,15 @@
     "Model calls": "Вызовы моделей",
     "Aggregator": "Агрегатор",
     "Advisor": "Советник",
-    "Analyst": "Аналитик"
+    "Analyst": "Аналитик",
+    "Save your API key": "Сохраните ключ API",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "Полный ключ показывается только один раз. Сохраните его в надёжном месте. Если вы его потеряете, удалите этот ключ и создайте новый.",
+    "I've saved it": "Я сохранил ключ",
+    "Use it in an app": "Использовать в приложении",
+    "Copy curl": "Скопировать команду curl",
+    "Open from a new API key": "Откройте из нового ключа API",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} требуется полный ключ API, а он показывается только один раз при создании. Создайте ключ и откройте {{name}} в появившемся окне.",
+    "Go to API keys": "Перейти к ключам API",
+    "Paste a full API key...": "Вставьте полный ключ API..."
   }
 }

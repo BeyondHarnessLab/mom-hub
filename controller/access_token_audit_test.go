@@ -317,7 +317,8 @@ func TestAccessTokenScopeDictionaryIgnoresTheViewersGrants(t *testing.T) {
 		}
 	}
 	assert.Equal(t, "Profile / View", labels["profile:read"])
-	assert.Equal(t, "API keys / Reveal full keys", labels["api_key:reveal"])
+	assert.Equal(t, "API keys / Edit", labels["api_key:write"])
+	assert.NotContains(t, labels, "api_key:reveal", "full API keys are shown only at creation")
 	assert.Equal(t, "Users / Edit", labels["user:write"])
 	assert.Equal(t, "System settings / Edit", labels["option:write"])
 	for _, permission := range authz.AllPermissions() {

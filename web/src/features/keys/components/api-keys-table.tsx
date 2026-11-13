@@ -169,7 +169,7 @@ function ApiKeysMobileList({
             </div>
 
             <div className='flex min-w-0 items-center justify-between gap-2'>
-              <div className='min-w-0 flex-1 [&_button:first-child]:max-w-full [&_button:first-child]:truncate [&_button:first-child]:px-0'>
+              <div className='min-w-0 flex-1'>
                 <ApiKeyCell apiKey={apiKey} />
               </div>
               <DataTableRowActions row={row} />
@@ -355,7 +355,7 @@ export function ApiKeysTable() {
         searchDebounceMs: 500,
         additionalSearch: (
           <Input
-            placeholder={t('Filter by API key...')}
+            placeholder={t('Paste a full API key...')}
             aria-label={t('Filter by API key...')}
             value={tokenFilterInput}
             onChange={(e) => setTokenFilterInput(e.target.value)}

@@ -96,7 +96,7 @@ func LogTaskConsumption(c *gin.Context, info *relaycommon.RelayInfo, task *model
 // 异步任务计费辅助函数
 // ---------------------------------------------------------------------------
 
-// resolveTokenKey 通过 TokenId 运行时获取令牌 Key（用于 Redis 缓存操作）。
+// resolveTokenKey 通过 TokenId 运行时获取令牌的密钥哈希（用于 Redis 缓存操作）。
 // 如果令牌已被删除或查询失败，返回空字符串。
 func resolveTokenKey(ctx context.Context, tokenId int, taskID string) string {
 	token, err := model.GetTokenById(tokenId)

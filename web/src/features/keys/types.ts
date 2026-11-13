@@ -25,7 +25,7 @@ import { z } from 'zod'
 export const apiKeySchema = z.object({
   id: z.number(),
   name: z.string(),
-  key: z.string(),
+  key: z.string(), // masked hint such as abcd**********wxyz; the full key is never returned
   status: z.number(), // 1: enabled, 2: disabled, 3: expired, 4: exhausted
   remain_quota: z.number(),
   used_quota: z.number(),
@@ -50,6 +50,14 @@ export const apiKeySchema = z.object({
 })
 
 export type ApiKey = z.infer<typeof apiKeySchema>
+
+// A key as returned once by the create endpoint; `key` is the full secret
+// without the sk- prefix and cannot be fetched again.
+export type CreatedApiKey = {
+  id: number
+  name: string
+  key: string
+}
 
 // ============================================================================
 // API Request/Response Types
@@ -106,4 +114,5 @@ export type ApiKeysDialogType =
   | 'update'
   | 'delete'
   | 'batch-delete'
+  | 'created'
   | 'cc-switch'

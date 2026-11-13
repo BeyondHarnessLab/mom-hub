@@ -303,26 +303,12 @@ func InjectUmamiAnalytics() {
 }
 
 func InjectGoogleAnalytics() {
-	analyticsInjectBuilder := &strings.Builder{}
-	if os.Getenv("GOOGLE_ANALYTICS_ID") != "" {
-		gaID := os.Getenv("GOOGLE_ANALYTICS_ID")
-		// Google Analytics 4 (gtag.js)
-		analyticsInjectBuilder.WriteString("<script async src=\"https://www.googletagmanager.com/gtag/js?id=")
-		analyticsInjectBuilder.WriteString(gaID)
-		analyticsInjectBuilder.WriteString("\"></script>")
-		analyticsInjectBuilder.WriteString("<script>")
-		analyticsInjectBuilder.WriteString("window.dataLayer = window.dataLayer || [];")
-		analyticsInjectBuilder.WriteString("function gtag(){dataLayer.push(arguments);}")
-		analyticsInjectBuilder.WriteString("gtag('js', new Date());")
-		analyticsInjectBuilder.WriteString("gtag('config', '")
-		analyticsInjectBuilder.WriteString(gaID)
-		analyticsInjectBuilder.WriteString("');")
-		analyticsInjectBuilder.WriteString("</script>")
-	}
-	analyticsInjectBuilder.WriteString("<!--Google Analytics QuantumNous-->\n")
-	analyticsInject := []byte(analyticsInjectBuilder.String())
+	// gtag.js is loaded by the web consent banner after the visitor accepts
+	// (web/src/components/consent-and-analytics.tsx). The measurement ID is
+	// exposed via /api/status from GOOGLE_ANALYTICS_ID. Injecting the vendor
+	// script here would skip consent.
 	placeholder := []byte("<!--Google Analytics-->\n")
-	indexPage = bytes.ReplaceAll(indexPage, placeholder, analyticsInject)
+	indexPage = bytes.ReplaceAll(indexPage, placeholder, []byte("<!--Google Analytics QuantumNous-->\n"))
 }
 
 func InitResources() error {

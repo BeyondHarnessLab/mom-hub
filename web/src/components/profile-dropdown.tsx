@@ -33,7 +33,9 @@ import {
 } from '@/components/ui/dropdown-menu'
 import useDialogState from '@/hooks/use-dialog'
 import { useIsSidebarModuleVisible } from '@/hooks/use-sidebar-config'
+import { useStatus } from '@/hooks/use-status'
 import { useUserDisplay } from '@/hooks/use-user-display'
+import { hasAnalyticsConfigured } from '@/lib/analytics'
 import { getUserAvatarFallback, getUserAvatarStyle } from '@/lib/avatar'
 import { ROLE } from '@/lib/roles'
 import { useAuthStore } from '@/stores/auth-store'
@@ -42,6 +44,8 @@ const avatarFallbackClassName = 'font-semibold text-white'
 
 export function ProfileDropdown() {
   const { t } = useTranslation()
+  const { status } = useStatus()
+  const showCookieSettings = hasAnalyticsConfigured(status)
   const navigate = useNavigate()
   const [open, setOpen] = useDialogState()
   const user = useAuthStore((state) => state.auth.user)
@@ -133,6 +137,12 @@ export function ProfileDropdown() {
             >
               <Settings className='size-4' />
               {t('System Settings')}
+            </DropdownMenuItem>
+          )}
+
+          {showCookieSettings && (
+            <DropdownMenuItem data-cookie-settings='true'>
+              Cookie settings
             </DropdownMenuItem>
           )}
 

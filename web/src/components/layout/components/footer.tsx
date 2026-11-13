@@ -20,6 +20,7 @@ import { Link } from '@tanstack/react-router'
 import { Fragment, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 
+import { CookieSettingsLink } from '@/components/cookie-settings-link'
 import { useStatus } from '@/hooks/use-status'
 import { useSystemConfig } from '@/hooks/use-system-config'
 import { cn } from '@/lib/utils'
@@ -302,6 +303,7 @@ export function Footer(props: FooterProps) {
               {props.copyright ?? t('footer.defaultCopyright')}
             </span>
             <LegalLinks leadingSeparator />
+            <CookieSettingsLink leadingSeparator />
           </div>
           <ProjectAttribution currentYear={currentYear} />
         </div>

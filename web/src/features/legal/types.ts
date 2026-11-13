@@ -16,8 +16,17 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 
 For commercial licensing, please contact support@quantumnous.com
 */
+export type LegalDocumentMeta = {
+  doc_type: string
+  version: string
+  effective_at: number
+  sha256: string
+  doc_url: string
+}
+
 export type LegalDocumentResponse = {
   success: boolean
   message?: string
   data?: string
+  legal?: LegalDocumentMeta
 }

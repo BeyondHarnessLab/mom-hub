@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { isHttpUrl, isLikelyHtml } from '@/lib/content-format'
 
+import { LegalVersionLine } from './components/legal-version-line'
 import type { LegalDocumentResponse } from './types'
 
 type LegalDocumentProps = {
@@ -49,6 +50,7 @@ export function LegalDocument({
     staleTime: 10 * 60 * 1000,
   })
 
+  const legal = data?.legal
   const rawContent = data?.data?.trim() ?? ''
   const hasContent = rawContent.length > 0
   const isUrl = hasContent && isHttpUrl(rawContent)
@@ -130,6 +132,7 @@ export function LegalDocument({
         <div className='mx-auto max-w-4xl space-y-6 py-12'>
           <div className='space-y-2'>
             <h1 className='text-3xl font-semibold tracking-tight'>{title}</h1>
+            {legal && <LegalVersionLine legal={legal} />}
           </div>
 
           <RichContent

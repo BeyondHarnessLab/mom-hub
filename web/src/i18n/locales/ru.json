@@ -7368,6 +7368,13 @@
     "Open from a new API key": "Откройте из нового ключа API",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} требуется полный ключ API, а он показывается только один раз при создании. Создайте ключ и откройте {{name}} в появившемся окне.",
     "Go to API keys": "Перейти к ключам API",
-    "Paste a full API key...": "Вставьте полный ключ API..."
+    "Paste a full API key...": "Вставьте полный ключ API...",
+    "Version {{version}}": "Версия {{version}}",
+    "Effective {{date}}": "Действует с {{date}}",
+    "Terms of Service version {{version}}": "Условия использования, версия {{version}}",
+    "Privacy Policy version {{version}}": "Политика конфиденциальности, версия {{version}}",
+    "By paying, you agree to the": "Оплачивая, вы принимаете",
+    ", effective {{date}}": ", действует с {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "Эта версия фиксируется вместе с заказом. Продолжение использования после обновления означает принятие обновлённой версии."
   }
 }

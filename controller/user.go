@@ -301,6 +301,9 @@ func Register(c *gin.Context) {
 		common.ApiErrorT(c, "User registration failed or user ID retrieval failed")
 		return
 	}
+	if _, err := model.RecordLegalAcceptances(insertedUser.Id, model.LegalAcceptanceSourceRegister, legalDocumentUrl, c.ClientIP(), c.Request.UserAgent()); err != nil {
+		common.SysError(common.LogText("failed to record legal acceptance for new user %d: %s", insertedUser.Id, err.Error()))
+	}
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
 		// 生成默认令牌

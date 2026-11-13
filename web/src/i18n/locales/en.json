@@ -7368,6 +7368,13 @@
     "Open from a new API key": "Open from a new API key",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.",
     "Go to API keys": "Go to API keys",
-    "Paste a full API key...": "Paste a full API key..."
+    "Paste a full API key...": "Paste a full API key...",
+    "Version {{version}}": "Version {{version}}",
+    "Effective {{date}}": "Effective {{date}}",
+    "Terms of Service version {{version}}": "Terms of Service version {{version}}",
+    "Privacy Policy version {{version}}": "Privacy Policy version {{version}}",
+    "By paying, you agree to the": "By paying, you agree to the",
+    ", effective {{date}}": ", effective {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "This version is recorded with your order. Continued use after an update means you accept the updated version."
   }
 }

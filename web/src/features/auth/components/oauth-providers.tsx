@@ -40,6 +40,12 @@ type OAuthProvidersProps = {
   onWeChatLogin?: () => void
   isWeChatLoading?: boolean
   redirectTo?: string
+  /**
+   * Set when the visitor accepted the legal documents before choosing a
+   * provider. A new account is created at callback time, so this is the only
+   * chance to record the agreement for OAuth sign-up.
+   */
+  legalConsent?: boolean
 }
 
 type ProviderButton = {
@@ -57,6 +63,7 @@ export function OAuthProviders({
   onWeChatLogin,
   isWeChatLoading = false,
   redirectTo,
+  legalConsent = false,
 }: OAuthProvidersProps) {
   const { t } = useTranslation()
   const {
@@ -69,7 +76,7 @@ export function OAuthProviders({
     handleLinuxDOLogin,
     handleTelegramLogin,
     handleCustomOAuthLogin,
-  } = useOAuthLogin(status, redirectTo)
+  } = useOAuthLogin(status, redirectTo, legalConsent)
 
   const providerButtons: ProviderButton[] = []
 

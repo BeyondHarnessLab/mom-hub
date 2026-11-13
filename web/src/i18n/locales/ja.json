@@ -7368,6 +7368,13 @@
     "Open from a new API key": "新しいAPIキーから開いてください",
     "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} には完全なAPIキーが必要ですが、完全なキーは作成時に一度だけ表示されます。キーを作成し、続いて表示されるダイアログから {{name}} を開いてください。",
     "Go to API keys": "APIキーへ移動",
-    "Paste a full API key...": "完全なAPIキーを貼り付け..."
+    "Paste a full API key...": "完全なAPIキーを貼り付け...",
+    "Version {{version}}": "バージョン {{version}}",
+    "Effective {{date}}": "発効日 {{date}}",
+    "Terms of Service version {{version}}": "利用規約 バージョン {{version}}",
+    "Privacy Policy version {{version}}": "プライバシーポリシー バージョン {{version}}",
+    "By paying, you agree to the": "お支払いにより、次に同意したものとみなされます:",
+    ", effective {{date}}": ": 発効日 {{date}}",
+    "This version is recorded with your order. Continued use after an update means you accept the updated version.": "このバージョンはご注文とともに記録されます。更新後も引き続きご利用いただく場合、更新後のバージョンに同意したものとみなされます。"
   }
 }

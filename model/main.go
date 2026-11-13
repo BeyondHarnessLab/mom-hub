@@ -354,6 +354,8 @@ func migrateDB() error {
 		&Log{},
 		&Midjourney{},
 		&TopUp{},
+		&LegalDocument{},
+		&LegalAcceptance{},
 		&QuotaData{},
 		&Task{},
 		&TaskPlugin{},

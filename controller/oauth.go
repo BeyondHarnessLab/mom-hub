@@ -27,6 +27,9 @@ type oauthStateRequest struct {
 	Aff      string          `json:"aff,omitempty"`
 	Scope    string          `json:"scope,omitempty"`
 	Context  json.RawMessage `json:"context,omitempty"`
+	// LegalConsent records that the visitor accepted the legal documents before
+	// starting the provider round trip. Only a login flow uses it.
+	LegalConsent bool `json:"legal_consent,omitempty"`
 }
 
 type oauthFlowPayload struct {
@@ -35,6 +38,11 @@ type oauthFlowPayload struct {
 	Telegram        *oauth.TelegramOAuthFlow       `json:"telegram,omitempty"`
 	SessionIdentity *service.AuthIdentity          `json:"session_identity,omitempty"`
 	Authorization   *model.AuthFlowAuthorization   `json:"authorization,omitempty"`
+	// LegalConsent is set on the sign-in flow when the visitor ticked the
+	// agreement box before starting the provider round trip. It is the only
+	// place a new account's agreement can be captured, because the account is
+	// created at callback time.
+	LegalConsent bool `json:"legal_consent,omitempty"`
 }
 
 // providerParams returns the params of messages that name the OAuth provider.
@@ -56,13 +64,14 @@ func GenerateOAuthCode(c *gin.Context) {
 		(request.Intent != model.AuthFlowIntentLogin && request.Intent != model.AuthFlowIntentBind && request.Intent != model.AuthFlowIntentVerify) ||
 		len(request.Aff) > 32 ||
 		(request.Intent != model.AuthFlowIntentLogin && request.Aff != "") ||
-		(request.Intent != model.AuthFlowIntentVerify && (request.Scope != "" || len(request.Context) != 0)) {
+		(request.Intent != model.AuthFlowIntentVerify && (request.Scope != "" || len(request.Context) != 0)) ||
+		(request.Intent != model.AuthFlowIntentLogin && request.LegalConsent) {
 		common.ApiErrorT(c, "Invalid parameters")
 		return
 	}
 	userID := 0
 	sessionID := ""
-	flowPayload := oauthFlowPayload{AffiliateCode: request.Aff}
+	flowPayload := oauthFlowPayload{AffiliateCode: request.Aff, LegalConsent: request.LegalConsent}
 	bindingStarted := false
 	if request.Provider == "telegram" {
 		telegramFlow, err := oauth.NewTelegramOAuthFlow()
@@ -312,7 +321,7 @@ func handleOAuthLogin(c *gin.Context, provider oauth.Provider, oauthUser *oauth.
 		writeSecurityOperationError(c, err)
 		return
 	}
-	user, migration, err := findOrCreateOAuthUser(c, provider, oauthUser, token, payload.AffiliateCode)
+	user, migration, err := findOrCreateOAuthUser(c, provider, oauthUser, token, payload.AffiliateCode, payload.LegalConsent)
 	if err != nil {
 		if errors.Is(err, model.ErrEmailAlreadyTaken) {
 			common.ApiErrorT(c, "Email address is already in use")
@@ -327,6 +336,8 @@ func handleOAuthLogin(c *gin.Context, provider oauth.Provider, oauthUser *oauth.
 			common.ApiErrorT(c, "Email address is already in use")
 		case *OAuthLegacyBindingNotConfirmedError:
 			common.ApiErrorT(c, "This {{provider}} account cannot be linked to an existing account automatically, please sign in or register another way and then link {{provider}} in account settings", providerParams(provider.GetName()))
+		case *OAuthLegalConsentRequiredError:
+			common.ApiErrorT(c, "Please agree to the legal terms first")
 		default:
 			writeSecurityOperationError(c, err)
 		}
@@ -396,7 +407,7 @@ func handleOAuthBind(c *gin.Context, providerName string, provider oauth.Provide
 // findOrCreateOAuthUser finds the existing user or creates a new one. For a
 // legacy GitHub binding that still waits for the login verification, it also
 // returns the rewrite to carry into the challenge.
-func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *oauth.OAuthUser, token *oauth.OAuthToken, affiliateCode string) (*model.User, *service.LegacyGitHubMigration, error) {
+func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *oauth.OAuthUser, token *oauth.OAuthToken, affiliateCode string, legalConsent bool) (*model.User, *service.LegacyGitHubMigration, error) {
 	user := &model.User{}
 	if provider.ProviderUserIDColumn() == "telegram_id" {
 		err := provider.FillUserByProviderID(user, oauthUser.ProviderUserID)
@@ -478,6 +489,17 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 	// User doesn't exist, create new user if registration is enabled
 	if !common.RegisterEnabled {
 		return nil, nil, &OAuthRegistrationDisabledError{}
+	}
+
+	// The account is created here, so this is where the agreement to the legal
+	// documents has to be captured. A visitor who never ticked the box cannot
+	// get an account, which mirrors what the sign-up form enforces.
+	activeDocuments, err := model.ActiveLegalDocuments()
+	if err != nil {
+		return nil, nil, err
+	}
+	if len(activeDocuments) > 0 && !legalConsent {
+		return nil, nil, &OAuthLegalConsentRequiredError{}
 	}
 
 	// Set up new user
@@ -575,6 +597,12 @@ func findOrCreateOAuthUser(c *gin.Context, provider oauth.Provider, oauthUser *o
 		user.FinalizeOAuthUserCreation(inviterId)
 	}
 
+	// The new account agreed to the documents by ticking the box before the
+	// provider round trip; record it now that the account has an ID.
+	if _, err := model.RecordLegalAcceptances(user.Id, model.LegalAcceptanceSourceOAuthSignup, legalDocumentUrl, c.ClientIP(), c.Request.UserAgent()); err != nil {
+		common.SysError(common.LogText("failed to record legal acceptance for OAuth user %d: %s", user.Id, err.Error()))
+	}
+
 	return user, nil, nil
 }
 
@@ -613,6 +641,14 @@ type OAuthLegacyBindingNotConfirmedError struct{}
 
 func (e *OAuthLegacyBindingNotConfirmedError) Error() string {
 	return "legacy binding was not confirmed"
+}
+
+// OAuthLegalConsentRequiredError reports a sign-in that would create an account
+// without the visitor having agreed to the legal documents.
+type OAuthLegalConsentRequiredError struct{}
+
+func (e *OAuthLegalConsentRequiredError) Error() string {
+	return "legal consent is required"
 }
 
 // handleOAuthError handles OAuth errors and returns a web console message

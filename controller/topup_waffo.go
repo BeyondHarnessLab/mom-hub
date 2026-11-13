@@ -221,6 +221,11 @@ func RequestWaffoPay(c *gin.Context) {
 	}
 
 	// 创建本地订单
+	topUpUser, err := model.GetUserById(id, false)
+	if err != nil || topUpUser == nil {
+		paymentError(c, common.NewMessage("User does not exist"))
+		return
+	}
 	topUp := &model.TopUp{
 		UserId:          id,
 		Amount:          amount,
@@ -231,6 +236,7 @@ func RequestWaffoPay(c *gin.Context) {
 		CreateTime:      time.Now().Unix(),
 		Status:          common.TopUpStatusPending,
 	}
+	recordCheckoutLegalAcceptance(c, topUpUser, topUp)
 	if err := topUp.Insert(); err != nil {
 		logger.LogError(c.Request.Context(), common.LogText("Waffo failed to create top-up order user_id=%d trade_no=%s amount=%d error=%q", id, merchantOrderId, req.Amount, err.Error()))
 		paymentError(c, common.NewMessage("Failed to create order"))

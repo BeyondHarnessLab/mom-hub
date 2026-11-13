@@ -34,6 +34,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
+import { CheckoutLegalNotice } from '@/features/legal/components/checkout-legal-notice'
 import { formatNumber } from '@/lib/format'
 import { cn } from '@/lib/utils'
 
@@ -507,6 +508,9 @@ export function RechargeFormCard({
           </AlertDescription>
         </Alert>
       )}
+
+      {/* The version the order will record, shown while the customer pays. */}
+      <CheckoutLegalNotice />
 
       {/* Creem Products Section */}
       {enableCreemTopup &&

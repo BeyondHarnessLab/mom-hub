@@ -371,6 +371,9 @@ func InitResources() error {
 		}
 	}
 	model.InitOptionMap()
+	if common.IsMasterNode {
+		controller.PublishLegalDocumentsAtStartup()
+	}
 
 	// 清理旧的磁盘缓存文件
 	common.CleanupOldCacheFiles()

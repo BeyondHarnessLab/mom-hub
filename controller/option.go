@@ -430,6 +430,12 @@ func UpdateOption(c *gin.Context) {
 		}
 		return
 	}
+	// A legal text saved here becomes a published version immediately, so the
+	// text users are shown and the version recorded on their orders cannot
+	// diverge.
+	if option.Key == "legal.user_agreement" || option.Key == "legal.privacy_policy" {
+		publishLegalDocuments(c.GetInt("id"))
+	}
 	// 出于安全考虑只记录被修改的配置项名称，不记录配置值（可能含密钥等敏感信息）。
 	recordManageAudit(c, "option.update", map[string]any{
 		"key": option.Key,

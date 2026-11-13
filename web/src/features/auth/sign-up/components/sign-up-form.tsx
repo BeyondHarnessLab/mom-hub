@@ -377,13 +377,6 @@ export function SignUpForm({
               </div>
             )}
 
-            <LegalConsent
-              status={status}
-              checked={agreedToLegal}
-              onCheckedChange={setAgreedToLegal}
-              className='mt-1'
-            />
-
             {/* Submit Button */}
             <Button
               type='submit'
@@ -404,11 +397,19 @@ export function SignUpForm({
           <OAuthProviders
             status={status}
             disabled={isLoading || (requiresLegalConsent && !agreedToLegal)}
+            legalConsent={agreedToLegal}
             onWeChatLogin={hasWeChatLogin ? handleOpenWeChatDialog : undefined}
             isWeChatLoading={isWeChatSubmitting}
             className='pt-2'
           />
         )}
+
+        <LegalConsent
+          status={status}
+          checked={agreedToLegal}
+          onCheckedChange={setAgreedToLegal}
+          className='mt-1'
+        />
       </form>
 
       {hasWeChatLogin && (

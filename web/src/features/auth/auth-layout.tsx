@@ -19,6 +19,7 @@ For commercial licensing, please contact support@quantumnous.com
 import { Link } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 
+import { CookieSettingsLink } from '@/components/cookie-settings-link'
 import { ProjectAttribution } from '@/components/layout/components/footer'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useSystemConfig } from '@/hooks/use-system-config'
@@ -80,6 +81,9 @@ export function AuthLayout({ children }: AuthLayoutProps) {
       {/* Upstream attribution required by NOTICE (AGPLv3 section 7(b)). */}
       <footer className='relative z-10 px-4 pb-6 text-center text-xs leading-relaxed'>
         <ProjectAttribution currentYear={new Date().getFullYear()} inline />
+        <div className='text-muted-foreground mt-2'>
+          <CookieSettingsLink className='text-xs' />
+        </div>
       </footer>
     </div>
   )

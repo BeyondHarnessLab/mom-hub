@@ -17,7 +17,7 @@ along with this program. If not, see <https://www.gnu.org/licenses/>.
 For commercial licensing, please contact support@quantumnous.com
 */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { createInstance } from 'i18next'
 import { I18nextProvider, initReactI18next } from 'react-i18next'
@@ -52,12 +52,7 @@ beforeEach(() => {
   const freshAt = Date.now() + 60_000
   queryClient.setQueryData(
     ['status'],
-    {
-      chats: [
-        { 'Web Chat': 'https://chat.example/?key={key}' },
-        { 'CC Switch': 'ccswitch' },
-      ],
-    },
+    { chats: [] },
     { updatedAt: freshAt }
   )
   queryClient.setQueryData(
@@ -120,28 +115,14 @@ it('shows the full key once after creation and discards it when closed', async (
   expect(screen.queryByDisplayValue(`sk-${createdKey}`)).not.toBeInTheDocument()
 })
 
-it('returns to the created key after closing CC Switch', async () => {
-  const user = await createKey()
+it('offers only the key and its copy button, with no app links', async () => {
+  await createKey()
 
-  // The admin's bare "ccswitch" preset is the same import, so one button.
-  expect(screen.getAllByRole('button', { name: 'CC Switch' })).toHaveLength(1)
-  await user.click(screen.getByRole('button', { name: 'CC Switch' }))
-  await screen.findByRole('dialog', { name: 'Import to CC Switch' })
-  await user.click(screen.getByRole('button', { name: 'Cancel' }))
-
-  await screen.findByRole('dialog', { name: 'Save your API key' })
-  expect(screen.getByDisplayValue(`sk-${createdKey}`)).toBeInTheDocument()
-})
-
-it('opens a chat app with the created key', async () => {
-  const user = await createKey()
-  const open = vi.spyOn(window, 'open').mockReturnValue(null)
-
-  await user.click(screen.getByRole('button', { name: 'Web Chat' }))
-
-  expect(open).toHaveBeenCalledWith(
-    `https://chat.example/?key=sk-${createdKey}`,
-    '_blank',
-    'noopener'
-  )
+  const dialog = screen.getByRole('dialog', { name: 'Save your API key' })
+  const labels = within(dialog)
+    .getAllByRole('button')
+    .map((button) => button.textContent?.trim() || button.getAttribute('aria-label'))
+  // Plus the dialog's own close icon.
+  expect(labels).toEqual(['Copy API key', "I've saved it", 'Close'])
+  expect(within(dialog).queryByText('Use it in an app')).not.toBeInTheDocument()
 })

@@ -72,3 +72,30 @@ describe('OAuthProviders custom provider buttons', () => {
     expect(button.querySelector('svg, img')).toBeNull()
   })
 })
+
+describe('OAuthProviders OIDC button', () => {
+  it('shows the Google icon when the OIDC display name is Google', () => {
+    render(
+      <OAuthProviders
+        status={{ oidc_enabled: true, oidc_display_name: 'Google' }}
+      />
+    )
+
+    const button = screen.getByRole('button', { name: 'Continue with Google' })
+    // LobeHub may fall back to the letter "G" when its SVG pack is unavailable.
+    const icon = button.querySelector('[aria-hidden="true"]')
+    expect(icon).not.toBeNull()
+    expect(icon?.querySelector('svg, img') || icon?.textContent?.trim()).toBeTruthy()
+  })
+
+  it('shows only the label when OIDC uses a generic display name', () => {
+    render(
+      <OAuthProviders
+        status={{ oidc_enabled: true, oidc_display_name: 'OIDC' }}
+      />
+    )
+
+    const button = screen.getByRole('button', { name: 'Continue with OIDC' })
+    expect(button.querySelector('svg, img')).toBeNull()
+  })
+})

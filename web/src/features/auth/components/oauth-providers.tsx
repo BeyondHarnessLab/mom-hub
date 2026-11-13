@@ -104,12 +104,14 @@ export function OAuthProviders({
 
   if (status?.oidc_enabled) {
     const oidcDisplayName = status.oidc_display_name?.trim() || 'OIDC'
+    const isGoogle = oidcDisplayName.toLowerCase() === 'google'
     providerButtons.push({
       key: 'oidc',
       label: t('Continue with {{name}}', {
         name: oidcDisplayName,
       }),
       onClick: handleOIDCLogin,
+      icon: isGoogle ? <OAuthProviderIcon icon='google' /> : undefined,
     })
   }
 

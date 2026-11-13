@@ -293,3 +293,90 @@ func TestMigrateTokenKeyUniquenessPostgreSQL(t *testing.T) {
 		})
 	}
 }
+
+// releasedToken is the tokens schema of the last release, which stored API
+// keys in plaintext and had no key_hint column.
+type releasedToken struct {
+	Id        int
+	UserId    int            `gorm:"index"`
+	Key       string         `gorm:"column:key;type:varchar(128);uniqueIndex"`
+	Name      string         `gorm:"index"`
+	DeletedAt gorm.DeletedAt `gorm:"index"`
+}
+
+// testTokenKeyHashMigration upgrades a table written by the last release and
+// starts twice: every plaintext key, including a soft-deleted one, must end up
+// as its hash with a masked hint, and the second start must change nothing.
+func testTokenKeyHashMigration(t *testing.T, db *gorm.DB) {
+	t.Helper()
+	tableName := fmt.Sprintf("token_key_hash_%d", time.Now().UnixNano())
+	t.Cleanup(func() { _ = db.Migrator().DropTable(tableName) })
+	require.NoError(t, db.Table(tableName).AutoMigrate(&releasedToken{}))
+
+	plaintexts := []string{
+		"ActiveKey0123456789abcdefghijklmnopqrstuvwxyzAB",
+		"DeletedKey0123456789abcdefghijklmnopqrstuvwxyzA",
+	}
+	for index, plaintext := range plaintexts {
+		row := releasedToken{UserId: 1, Key: plaintext, Name: fmt.Sprintf("released-%d", index)}
+		require.NoError(t, db.Table(tableName).Create(&row).Error)
+	}
+	require.NoError(t, db.Table(tableName).Where("name = ?", "released-1").Delete(&releasedToken{}).Error)
+
+	recorder := &migrationSQLRecorder{}
+	for pass := range 2 {
+		recorder.reset()
+		session := db.Session(&gorm.Session{Logger: recorder})
+		require.NoError(t, session.Table(tableName).AutoMigrate(&Token{}))
+		require.NoError(t, migrateTokenKeysToHash(session.Table(tableName)))
+		if pass == 1 {
+			assert.Empty(t, recorder.schemaMutations(), "repeated startup must not change the schema")
+			for _, statement := range recorder.statements {
+				assert.NotContains(t, strings.ToUpper(statement), "UPDATE", "repeated startup must not rewrite keys")
+			}
+		}
+	}
+
+	var tokens []Token
+	require.NoError(t, db.Table(tableName).Unscoped().Order("id").Find(&tokens).Error)
+	require.Len(t, tokens, len(plaintexts))
+	for index, plaintext := range plaintexts {
+		assert.Equal(t, HashTokenKey(plaintext), tokens[index].Key)
+		assert.Equal(t, MaskTokenKey(plaintext), tokens[index].KeyHint)
+	}
+	var plaintextRows int64
+	require.NoError(t, db.Table(tableName).Unscoped().Where(clause.IN{Column: clause.Column{Name: "key"}, Values: []any{plaintexts[0], plaintexts[1]}}).Count(&plaintextRows).Error)
+	assert.Zero(t, plaintextRows, "no plaintext key may remain, deleted rows included")
+}
+
+func TestMigrateTokenKeysToHashSQLite(t *testing.T) {
+	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
+	require.NoError(t, err)
+	testTokenKeyHashMigration(t, db)
+}
+
+func TestMigrateTokenKeysToHashMySQL(t *testing.T) {
+	dsn := strings.TrimSpace(os.Getenv("TEST_MYSQL_DSN"))
+	if dsn == "" {
+		t.Skip("TEST_MYSQL_DSN is not configured")
+	}
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	testTokenKeyHashMigration(t, db)
+}
+
+func TestMigrateTokenKeysToHashPostgreSQL(t *testing.T) {
+	dsn := strings.TrimSpace(os.Getenv("TEST_POSTGRES_DSN"))
+	if dsn == "" {
+		t.Skip("TEST_POSTGRES_DSN is not configured")
+	}
+	db, err := gorm.Open(postgres.New(postgres.Config{DSN: dsn, PreferSimpleProtocol: true}), &gorm.Config{})
+	require.NoError(t, err)
+	sqlDB, err := db.DB()
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, sqlDB.Close()) })
+	testTokenKeyHashMigration(t, db)
+}

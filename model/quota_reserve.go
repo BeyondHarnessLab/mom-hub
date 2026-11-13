@@ -215,7 +215,7 @@ func TryReserveTokenQuota(id int, key string, quota int, unlimited bool) (bool, 
 
 	result, err := cacheTryReserveTokenQuota(id, key, int64(quota))
 	if err == nil && result == cacheQuotaMiss {
-		if _, hydrateErr := GetTokenByKey(key, true); hydrateErr == nil {
+		if _, hydrateErr := GetTokenByKeyHash(key, true); hydrateErr == nil {
 			result, err = cacheTryReserveTokenQuota(id, key, int64(quota))
 		}
 	}

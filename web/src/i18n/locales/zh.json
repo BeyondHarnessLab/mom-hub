@@ -7359,6 +7359,15 @@
     "Model calls": "模型调用",
     "Aggregator": "聚合器",
     "Advisor": "顾问",
-    "Analyst": "分析师"
+    "Analyst": "分析师",
+    "Save your API key": "保存你的 API 密钥",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "完整密钥只显示这一次，请妥善保存。如果丢失，请删除此密钥并新建一个。",
+    "I've saved it": "我已保存",
+    "Use it in an app": "在应用中使用",
+    "Copy curl": "复制 curl 命令",
+    "Open from a new API key": "请从新建的 API 密钥打开",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} 需要完整的 API 密钥，而完整密钥只在创建时显示一次。请新建一个密钥，然后在随后弹出的窗口中打开 {{name}}。",
+    "Go to API keys": "前往 API 密钥",
+    "Paste a full API key...": "粘贴完整的 API 密钥..."
   }
 }

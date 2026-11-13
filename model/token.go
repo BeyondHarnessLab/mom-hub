@@ -1,6 +1,8 @@
 package model
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -11,10 +13,15 @@ import (
 	"gorm.io/gorm"
 )
 
+// Token is a user's API key. Key holds the SHA-256 of the key (without the sk-
+// prefix), never the key itself: the plaintext is returned once at creation,
+// and KeyHint keeps its masked form for display. The field name stays Key so
+// GORM keeps the idx_tokens_key index name.
 type Token struct {
 	Id                 int            `json:"id"`
 	UserId             int            `json:"user_id" gorm:"index"`
-	Key                string         `json:"key" gorm:"type:varchar(128);uniqueIndex"`
+	Key                string         `json:"-" gorm:"type:varchar(128);uniqueIndex"`
+	KeyHint            string         `json:"key" gorm:"type:varchar(32);default:''"`
 	Status             int            `json:"status" gorm:"default:1"`
 	Name               string         `json:"name" gorm:"index" `
 	CreatedTime        int64          `json:"created_time" gorm:"bigint"`
@@ -58,10 +65,6 @@ func (token *Token) SetAutoGroups(groups []string) error {
 	return nil
 }
 
-func (token *Token) Clean() {
-	token.Key = ""
-}
-
 func MaskTokenKey(key string) string {
 	if key == "" {
 		return ""
@@ -75,12 +78,24 @@ func MaskTokenKey(key string) string {
 	return key[:4] + "**********" + key[len(key)-4:]
 }
 
-func (token *Token) GetFullKey() string {
-	return token.Key
+// HashTokenKey returns the stored form of an API key given without its sk-
+// prefix. API keys are 48 CSPRNG characters, so a plain SHA-256 suffices; a
+// slow password hash would add nothing (OWASP ASVS 5.0 11.4.1, 11.5.1).
+func HashTokenKey(key string) string {
+	sum := sha256.Sum256([]byte(key))
+	return hex.EncodeToString(sum[:])
 }
 
-func (token *Token) GetMaskedKey() string {
-	return MaskTokenKey(token.Key)
+// IssueKey gives the token a new API key and returns the plaintext, which the
+// caller shows to the user once. Only its hash and masked hint are kept.
+func (token *Token) IssueKey() (string, error) {
+	key, err := common.GenerateKey()
+	if err != nil {
+		return "", err
+	}
+	token.Key = HashTokenKey(key)
+	token.KeyHint = MaskTokenKey(key)
+	return key, nil
 }
 
 func (token *Token) GetIpLimits() []string {
@@ -167,13 +182,9 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		offset = 0
 	}
 
-	if token != "" {
-		token = strings.TrimPrefix(token, "sk-")
-	}
-
 	// 超量用户（令牌数超过上限）只允许精确搜索，禁止模糊搜索
 	maxTokens := operation_setting.GetMaxUserTokens()
-	hasFuzzy := strings.Contains(keyword, "%") || strings.Contains(token, "%")
+	hasFuzzy := strings.Contains(keyword, "%")
 	if hasFuzzy {
 		count, err := CountUserTokens(userId)
 		if err != nil {
@@ -195,12 +206,9 @@ func SearchUserTokens(userId int, keyword string, token string, offset int, limi
 		}
 		baseQuery = baseQuery.Where("name LIKE ? ESCAPE '!'", keywordPattern)
 	}
+	// 只存哈希，按密钥搜索只能输入完整密钥精确匹配
 	if token != "" {
-		tokenPattern, err := sanitizeLikePattern(token)
-		if err != nil {
-			return nil, 0, err
-		}
-		baseQuery = baseQuery.Where(commonKeyCol+" LIKE ? ESCAPE '!'", tokenPattern)
+		baseQuery = baseQuery.Where(commonKeyCol+" = ?", HashTokenKey(strings.TrimPrefix(token, "sk-")))
 	}
 
 	// 先查匹配总数（用于分页，受 maxTokens 上限保护，避免全表 COUNT）
@@ -279,17 +287,25 @@ func GetTokenById(id int) (*Token, error) {
 	return &token, err
 }
 
-func GetTokenByKey(key string, fromDB bool) (token *Token, err error) {
+// GetTokenByKey looks a token up by the API key a client presented, given
+// without its sk- prefix.
+func GetTokenByKey(key string, fromDB bool) (*Token, error) {
+	return GetTokenByKeyHash(HashTokenKey(key), fromDB)
+}
+
+// GetTokenByKeyHash looks a token up by its stored key hash, which also keys
+// the token's Redis cache entry.
+func GetTokenByKeyHash(keyHash string, fromDB bool) (token *Token, err error) {
 	if !fromDB && common.RedisEnabled {
 		// Try Redis first
-		token, err := cacheGetTokenByKey(key)
+		token, err := cacheGetTokenByKey(keyHash)
 		if err == nil {
 			return token, nil
 		}
 		// Don't return error - fall through to DB
 	}
 	token = &Token{}
-	if err = DB.Where(commonKeyCol+" = ?", key).First(token).Error; err != nil {
+	if err = DB.Where(commonKeyCol+" = ?", keyHash).First(token).Error; err != nil {
 		return nil, err
 	}
 	if common.RedisEnabled {
@@ -471,14 +487,6 @@ func BatchDeleteTokens(ids []int, userId int) (int, error) {
 	}
 
 	return len(tokens), nil
-}
-
-func GetTokenKeysByIds(ids []int, userId int) ([]Token, error) {
-	var tokens []Token
-	err := DB.Select("id", commonKeyCol).
-		Where("user_id = ? AND id IN (?)", userId, ids).
-		Find(&tokens).Error
-	return tokens, err
 }
 
 // InvalidateUserTokensCache 清理指定用户所有令牌在 Redis 中的缓存，

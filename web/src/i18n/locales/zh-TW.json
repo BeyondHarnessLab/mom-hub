@@ -7359,6 +7359,15 @@
     "Model calls": "模型呼叫",
     "Aggregator": "聚合器",
     "Advisor": "顧問",
-    "Analyst": "分析師"
+    "Analyst": "分析師",
+    "Save your API key": "保存你的 API 金鑰",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "完整金鑰只顯示這一次，請妥善保存。如果遺失，請刪除此金鑰並新建一個。",
+    "I've saved it": "我已保存",
+    "Use it in an app": "在應用中使用",
+    "Copy curl": "複製 curl 命令",
+    "Open from a new API key": "請從新建的 API 金鑰開啟",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} 需要完整的 API 金鑰，而完整金鑰只在建立時顯示一次。請新建一個金鑰，然後在隨後彈出的視窗中開啟 {{name}}。",
+    "Go to API keys": "前往 API 金鑰",
+    "Paste a full API key...": "貼上完整的 API 金鑰..."
   }
 }

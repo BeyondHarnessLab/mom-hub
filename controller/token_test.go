@@ -9,6 +9,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os"
 	"slices"
 	"strconv"
@@ -47,6 +48,7 @@ type tokenResponseItem struct {
 }
 
 type tokenKeyResponse struct {
+	ID  int    `json:"id"`
 	Key string `json:"key"`
 }
 
@@ -174,7 +176,8 @@ func seedToken(t *testing.T, db *gorm.DB, userID int, name string, rawKey string
 	token := &model.Token{
 		UserId:         userID,
 		Name:           name,
-		Key:            rawKey,
+		Key:            model.HashTokenKey(rawKey),
+		KeyHint:        model.MaskTokenKey(rawKey),
 		Status:         common.TokenStatusEnabled,
 		CreatedTime:    1,
 		AccessedTime:   1,
@@ -459,10 +462,10 @@ func TestGetAllTokensMasksKeyInResponse(t *testing.T) {
 	if len(page.Items) != 1 {
 		t.Fatalf("expected exactly one token, got %d", len(page.Items))
 	}
-	if page.Items[0].Key != token.GetMaskedKey() {
-		t.Fatalf("expected masked key %q, got %q", token.GetMaskedKey(), page.Items[0].Key)
+	if page.Items[0].Key != model.MaskTokenKey("abcd1234efgh5678") {
+		t.Fatalf("expected masked key %q, got %q", model.MaskTokenKey("abcd1234efgh5678"), page.Items[0].Key)
 	}
-	if strings.Contains(recorder.Body.String(), token.Key) {
+	if strings.Contains(recorder.Body.String(), "abcd1234efgh5678") || strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("list response leaked raw token key: %s", recorder.Body.String())
 	}
 }
@@ -486,10 +489,10 @@ func TestSearchTokensMasksKeyInResponse(t *testing.T) {
 	if len(page.Items) != 1 {
 		t.Fatalf("expected exactly one search result, got %d", len(page.Items))
 	}
-	if page.Items[0].Key != token.GetMaskedKey() {
-		t.Fatalf("expected masked search key %q, got %q", token.GetMaskedKey(), page.Items[0].Key)
+	if page.Items[0].Key != model.MaskTokenKey("ijkl1234mnop5678") {
+		t.Fatalf("expected masked search key %q, got %q", model.MaskTokenKey("ijkl1234mnop5678"), page.Items[0].Key)
 	}
-	if strings.Contains(recorder.Body.String(), token.Key) {
+	if strings.Contains(recorder.Body.String(), "ijkl1234mnop5678") || strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("search response leaked raw token key: %s", recorder.Body.String())
 	}
 }
@@ -511,10 +514,10 @@ func TestGetTokenMasksKeyInResponse(t *testing.T) {
 	if err := common.Unmarshal(response.Data, &detail); err != nil {
 		t.Fatalf("failed to decode token detail response: %v", err)
 	}
-	if detail.Key != token.GetMaskedKey() {
-		t.Fatalf("expected masked detail key %q, got %q", token.GetMaskedKey(), detail.Key)
+	if detail.Key != model.MaskTokenKey("qrst1234uvwx5678") {
+		t.Fatalf("expected masked detail key %q, got %q", model.MaskTokenKey("qrst1234uvwx5678"), detail.Key)
 	}
-	if strings.Contains(recorder.Body.String(), token.Key) {
+	if strings.Contains(recorder.Body.String(), "qrst1234uvwx5678") || strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("detail response leaked raw token key: %s", recorder.Body.String())
 	}
 }
@@ -547,45 +550,77 @@ func TestUpdateTokenMasksKeyInResponse(t *testing.T) {
 	if err := common.Unmarshal(response.Data, &detail); err != nil {
 		t.Fatalf("failed to decode token update response: %v", err)
 	}
-	if detail.Key != token.GetMaskedKey() {
-		t.Fatalf("expected masked update key %q, got %q", token.GetMaskedKey(), detail.Key)
+	if detail.Key != model.MaskTokenKey("yzab1234cdef5678") {
+		t.Fatalf("expected masked update key %q, got %q", model.MaskTokenKey("yzab1234cdef5678"), detail.Key)
 	}
-	if strings.Contains(recorder.Body.String(), token.Key) {
+	if strings.Contains(recorder.Body.String(), "yzab1234cdef5678") || strings.Contains(recorder.Body.String(), token.Key) {
 		t.Fatalf("update response leaked raw token key: %s", recorder.Body.String())
 	}
 }
 
-func TestGetTokenKeyRequiresOwnershipAndReturnsFullKey(t *testing.T) {
+// initTokenKeyLookup initializes production column quoting for key lookups.
+func initTokenKeyLookup(t *testing.T) {
+	t.Helper()
+	t.Setenv("LOG_SQL_DSN", "")
+	require.NoError(t, model.InitLogDB())
+}
+
+func TestAddTokenShowsKeyOnceAndStoresOnlyItsHash(t *testing.T) {
 	db := setupTokenControllerTestDB(t)
-	token := seedToken(t, db, 1, "owned-token", "owner1234token5678")
+	initTokenKeyLookup(t)
 
-	authorizedCtx, authorizedRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/"+strconv.Itoa(token.Id)+"/key", nil, 1)
-	authorizedCtx.Params = gin.Params{{Key: "id", Value: strconv.Itoa(token.Id)}}
-	GetTokenKey(authorizedCtx)
+	ctx, recorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/", map[string]any{"name": "show-once", "expired_time": -1, "unlimited_quota": true}, 1)
+	AddToken(ctx)
+	response := decodeAPIResponse(t, recorder)
+	require.True(t, response.Success, response.Message)
+	var created tokenKeyResponse
+	require.NoError(t, common.Unmarshal(response.Data, &created))
+	require.Len(t, created.Key, 48)
 
-	authorizedResponse := decodeAPIResponse(t, authorizedRecorder)
-	if !authorizedResponse.Success {
-		t.Fatalf("expected authorized key fetch to succeed, got message: %s", authorizedResponse.Message)
-	}
+	var stored model.Token
+	require.NoError(t, db.First(&stored, created.ID).Error)
+	assert.Equal(t, model.HashTokenKey(created.Key), stored.Key)
+	assert.Equal(t, model.MaskTokenKey(created.Key), stored.KeyHint)
 
-	var keyData tokenKeyResponse
-	if err := common.Unmarshal(authorizedResponse.Data, &keyData); err != nil {
-		t.Fatalf("failed to decode token key response: %v", err)
-	}
-	if keyData.Key != token.GetFullKey() {
-		t.Fatalf("expected full key %q, got %q", token.GetFullKey(), keyData.Key)
-	}
+	detailCtx, detailRecorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/"+strconv.Itoa(created.ID), nil, 1)
+	detailCtx.Params = gin.Params{{Key: "id", Value: strconv.Itoa(created.ID)}}
+	GetToken(detailCtx)
+	require.True(t, decodeAPIResponse(t, detailRecorder).Success)
+	assert.NotContains(t, detailRecorder.Body.String(), created.Key, "the full key is never returned again")
+	assert.NotContains(t, detailRecorder.Body.String(), stored.Key)
 
-	unauthorizedCtx, unauthorizedRecorder := newAuthenticatedContext(t, http.MethodPost, "/api/token/"+strconv.Itoa(token.Id)+"/key", nil, 2)
-	unauthorizedCtx.Params = gin.Params{{Key: "id", Value: strconv.Itoa(token.Id)}}
-	GetTokenKey(unauthorizedCtx)
+	authenticated, err := model.ValidateUserToken(created.Key)
+	require.NoError(t, err)
+	assert.Equal(t, created.ID, authenticated.Id)
+	_, err = model.ValidateUserToken(stored.Key)
+	assert.ErrorIs(t, err, model.ErrTokenInvalid, "the stored hash is not a credential")
+}
 
-	unauthorizedResponse := decodeAPIResponse(t, unauthorizedRecorder)
-	if unauthorizedResponse.Success {
-		t.Fatalf("expected unauthorized key fetch to fail")
-	}
-	if strings.Contains(unauthorizedRecorder.Body.String(), token.Key) {
-		t.Fatalf("unauthorized key response leaked raw token key: %s", unauthorizedRecorder.Body.String())
+func TestSearchTokensMatchesOnlyTheFullKey(t *testing.T) {
+	db := setupTokenControllerTestDB(t)
+	initTokenKeyLookup(t)
+	rawKey := "srch1234abcd5678efgh9012ijkl3456mnop7890qrst1234"
+	token := seedToken(t, db, 1, "key-search", rawKey)
+
+	for _, tc := range []struct {
+		name, query string
+		want        int
+	}{
+		{name: "full key with prefix", query: "sk-" + rawKey, want: 1},
+		{name: "full key without prefix", query: rawKey, want: 1},
+		{name: "partial key", query: "%abcd%"},
+		{name: "masked hint", query: token.KeyHint},
+		{name: "stored hash", query: token.Key},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx, recorder := newAuthenticatedContext(t, http.MethodGet, "/api/token/search?token="+url.QueryEscape(tc.query), nil, 1)
+			SearchTokens(ctx)
+			response := decodeAPIResponse(t, recorder)
+			require.True(t, response.Success, response.Message)
+			var page tokenPageResponse
+			require.NoError(t, common.Unmarshal(response.Data, &page))
+			assert.Len(t, page.Items, tc.want)
+		})
 	}
 }
 
@@ -662,9 +697,7 @@ func TestGetTokenUsageFollowsTheUserQuotaSwitchAndIPWhitelist(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			db := setupTokenControllerTestDB(t)
 			require.NoError(t, db.AutoMigrate(&model.User{}))
-			// Initialize production column quoting for the token key lookup.
-			t.Setenv("LOG_SQL_DSN", "")
-			require.NoError(t, model.InitLogDB())
+			initTokenKeyLookup(t)
 			user := &model.User{Username: "quota-owner", Password: "placeholder", Role: common.RoleCommonUser, Status: common.UserStatusEnabled, Group: "default", Quota: 12345, UsedQuota: 678, AuthVersion: 1, AffCode: "quota-owner"}
 			require.NoError(t, db.Create(user).Error)
 			token := seedToken(t, db, user.Id, "usage-token", "usagekey1234")
@@ -736,7 +769,9 @@ func TestAPITokenAuditDatabaseMatrix(t *testing.T) {
 				db, _ := newAuditTestDatabase(t, database.name, dsn)
 				model.DB = db
 				common.SetDatabaseTypes(database.typ, database.typ)
-				require.NoError(t, db.AutoMigrate(&model.User{}, &model.UserSession{}, &model.Token{}))
+				require.NoError(t, db.AutoMigrate(&model.User{}, &model.UserSession{}, &model.Token{}, &model.Option{}))
+				// The legacy access token case needs an open transition window.
+				require.NoError(t, model.EnsureLegacyAccessTokenRetireAt(time.Now().Unix()))
 				// Initialize production column quoting as well as the existing audit table.
 				require.NoError(t, model.InitLogDB())
 				if separateLog {
@@ -780,14 +815,6 @@ func verifyAPITokenAudit(t *testing.T) {
 	tokenRoutes.PUT("/", UpdateToken)
 	tokenRoutes.DELETE("/:id", DeleteToken)
 	tokenRoutes.POST("/batch", DeleteTokenBatch)
-	tokenRoutes.POST("/batch/keys", GetTokenKeysBatch)
-	tokenRoutes.POST("/:id/key", func(c *gin.Context) {
-		if c.GetHeader("X-Test-Limit") != "" {
-			c.AbortWithStatusJSON(429, gin.H{"success": false})
-			return
-		}
-		c.Next()
-	}, GetTokenKey)
 	tokenRoutes.GET("/", GetAllTokens)
 	tokenRoutes.GET("/:id", GetToken)
 	tokenRoutes.GET("/search", SearchTokens)
@@ -798,7 +825,7 @@ func verifyAPITokenAudit(t *testing.T) {
 		success                          bool
 		params                           string
 		initialStatus                    int
-		failWrite, rateLimit, usePAT     bool
+		failWrite, usePAT                bool
 	}{
 		{name: "create", method: "POST", path: "/", body: `{"name":"created","expired_time":-1,"unlimited_quota":true}`, action: "token.create", success: true},
 		{name: "invalid create", method: "POST", path: "/", body: `{"name":"attempt","remain_quota":-1}`, action: "token.create", params: `{"name":"attempt"}`},
@@ -818,15 +845,9 @@ func verifyAPITokenAudit(t *testing.T) {
 		{name: "delete", method: "DELETE", path: "/$id", action: "token.delete", success: true, params: `{"id":$id,"name":"owned"}`},
 		{name: "foreign delete", method: "DELETE", path: "/$other", action: "token.delete", params: `{"id":$other}`},
 		{name: "missing delete", method: "DELETE", path: "/999999", action: "token.delete", params: `{"id":999999}`},
-		{name: "key view", method: "POST", path: "/$id/key", action: "token.key_view", success: true, params: `{"id":$id,"name":"owned"}`},
-		{name: "PAT key view", method: "POST", path: "/$id/key", action: "token.key_view", success: true, params: `{"id":$id,"name":"owned"}`, usePAT: true},
-		{name: "foreign key view", method: "POST", path: "/$other/key", action: "token.key_view", params: `{"id":$other}`},
-		{name: "rate limited key view", method: "POST", path: "/$id/key", action: "token.key_view", params: `{"id":$id}`, rateLimit: true},
+		{name: "PAT delete", method: "DELETE", path: "/$id", action: "token.delete", success: true, params: `{"id":$id,"name":"owned"}`, usePAT: true},
 		{name: "batch delete partial and duplicate", method: "POST", path: "/batch", body: `{"ids":[$id,$id,$other,999999]}`, action: "token.delete_batch", success: true, params: `{"requested_ids":[$id,$id,$other,999999],"total":4,"count":1}`},
 		{name: "empty batch delete", method: "POST", path: "/batch", body: `{"ids":[]}`, action: "token.delete_batch", params: `{"requested_ids":[],"total":0}`},
-		{name: "batch keys partial and duplicate", method: "POST", path: "/batch/keys", body: `{"ids":[$id,$id,$other,999999]}`, action: "token.key_view_batch", success: true, params: `{"requested_ids":[$id,$id,$other,999999],"total":4,"count":1,"returned_ids":[$id]}`},
-		{name: "batch keys no matches", method: "POST", path: "/batch/keys", body: `{"ids":[$other,999999]}`, action: "token.key_view_batch", success: true, params: `{"requested_ids":[$other,999999],"total":2,"count":0,"returned_ids":[]}`},
-		{name: "empty batch keys", method: "POST", path: "/batch/keys", body: `{"ids":[]}`, action: "token.key_view_batch", params: `{"requested_ids":[],"total":0}`},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			empty := ""
@@ -864,9 +885,6 @@ func verifyAPITokenAudit(t *testing.T) {
 			request.Header.Set("Content-Type", "application/json")
 			request.Header.Set("User-Agent", "api-token-audit-client")
 			request.RemoteAddr = "192.0.2.12:4321"
-			if tc.rateLimit {
-				request.Header.Set("X-Test-Limit", "1")
-			}
 			response := httptest.NewRecorder()
 			router.ServeHTTP(response, request)
 			if strings.Contains(tc.name, "exceeds audit buffer") {
@@ -893,12 +911,8 @@ func verifyAPITokenAudit(t *testing.T) {
 			assert.Equal(t, tc.action, operation.Action)
 			assert.Equal(t, tc.success, operation.Success)
 			assert.Equal(t, response.Code, operation.Status)
-			if tc.rateLimit {
-				assert.Equal(t, 429, response.Code)
-			} else {
-				assert.Equal(t, 200, response.Code)
-				assert.Equal(t, tc.success, decodeAPIResponse(t, response).Success)
-			}
+			assert.Equal(t, 200, response.Code)
+			assert.Equal(t, tc.success, decodeAPIResponse(t, response).Success)
 			assert.Equal(t, user.Id, operation.UserId)
 			assert.Equal(t, user.Username, operation.Username)
 			assert.Equal(t, common.RoleCommonUser, operation.ActorRole)
@@ -919,11 +933,15 @@ func verifyAPITokenAudit(t *testing.T) {
 			assert.Equal(t, tc.action, operation.Other.Op.Action)
 			params, err := common.Marshal(operation.Other.Op.Params)
 			require.NoError(t, err)
+			secrets := []string{pat, jwt, owned.Key, foreign.Key, foreign.Name, "raw-body-secret", "raw-storage-error-secret", "private-model-configuration", "203.0.113.57", "Authorization"}
 			if tc.name == "create" {
 				var created model.Token
 				require.NoError(t, model.DB.Where("user_id = ? AND name = ?", user.Id, "created").First(&created).Error)
 				assert.JSONEq(t, fmt.Sprintf(`{"id":%d,"name":"created"}`, created.Id), string(params))
-				assert.NotContains(t, string(params), created.Key)
+				var shown tokenKeyResponse
+				require.NoError(t, common.Unmarshal(decodeAPIResponse(t, response).Data, &shown))
+				require.NotEmpty(t, shown.Key)
+				secrets = append(secrets, shown.Key, created.Key)
 			} else if tc.params == `{}` {
 				assert.Empty(t, operation.Other.Op.Params)
 			} else {
@@ -931,11 +949,8 @@ func verifyAPITokenAudit(t *testing.T) {
 			}
 			encoded, err := common.Marshal(events)
 			require.NoError(t, err)
-			for _, secret := range []string{pat, jwt, owned.Key, foreign.Key, foreign.Name, "raw-body-secret", "raw-storage-error-secret", "private-model-configuration", "203.0.113.57", "Authorization"} {
+			for _, secret := range secrets {
 				assert.NotContains(t, string(encoded), secret)
-			}
-			if tc.action == "token.key_view" && tc.success {
-				assert.Contains(t, response.Body.String(), owned.GetFullKey())
 			}
 		})
 	}
@@ -947,34 +962,28 @@ func verifyAPITokenAudit(t *testing.T) {
 		}
 		body, err := common.Marshal(TokenBatch{Ids: ids})
 		require.NoError(t, err)
-		for _, path := range []string{"/api/token/batch", "/api/token/batch/keys"} {
-			request := httptest.NewRequest("POST", path, bytes.NewReader(body))
-			request.Header.Set("Authorization", "Bearer "+jwt)
-			request.Header.Set("Content-Type", "application/json")
-			response := httptest.NewRecorder()
-			router.ServeHTTP(response, request)
-			var event model.AuditLog
-			require.NoError(t, model.LOG_DB.Where("request_id = ?", response.Header().Get(common.RequestIdKey)).First(&event).Error)
-			var params struct {
-				IDs       []int `json:"requested_ids"`
-				Truncated bool  `json:"requested_ids_truncated"`
-				Total     int   `json:"total"`
-				Count     *int  `json:"count"`
-			}
-			encoded, err := common.Marshal(event.Other.Op.Params)
-			require.NoError(t, err)
-			require.NoError(t, common.Unmarshal(encoded, &params))
-			assert.Equal(t, ids[:100], params.IDs)
-			assert.True(t, params.Truncated)
-			assert.Equal(t, 101, params.Total)
-			assert.Equal(t, path == "/api/token/batch", event.Success)
-			if event.Success {
-				require.NotNil(t, params.Count)
-				assert.Zero(t, *params.Count)
-			} else {
-				assert.Nil(t, params.Count)
-			}
+		request := httptest.NewRequest("POST", "/api/token/batch", bytes.NewReader(body))
+		request.Header.Set("Authorization", "Bearer "+jwt)
+		request.Header.Set("Content-Type", "application/json")
+		response := httptest.NewRecorder()
+		router.ServeHTTP(response, request)
+		var event model.AuditLog
+		require.NoError(t, model.LOG_DB.Where("request_id = ?", response.Header().Get(common.RequestIdKey)).First(&event).Error)
+		var params struct {
+			IDs       []int `json:"requested_ids"`
+			Truncated bool  `json:"requested_ids_truncated"`
+			Total     int   `json:"total"`
+			Count     *int  `json:"count"`
 		}
+		encoded, err := common.Marshal(event.Other.Op.Params)
+		require.NoError(t, err)
+		require.NoError(t, common.Unmarshal(encoded, &params))
+		assert.Equal(t, ids[:100], params.IDs)
+		assert.True(t, params.Truncated)
+		assert.Equal(t, 101, params.Total)
+		assert.True(t, event.Success)
+		require.NotNil(t, params.Count)
+		assert.Zero(t, *params.Count)
 	})
 
 	t.Run("reads and unauthenticated writes add no operation audit", func(t *testing.T) {

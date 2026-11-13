@@ -303,17 +303,10 @@ func Register(c *gin.Context) {
 	}
 	// 生成默认令牌
 	if constant.GenerateDefaultToken {
-		key, err := common.GenerateKey()
-		if err != nil {
-			common.ApiErrorT(c, "Failed to generate default token")
-			common.SysLog(common.LogText("failed to generate token key: %s", err.Error()))
-			return
-		}
 		// 生成默认令牌
 		token := model.Token{
 			UserId:             insertedUser.Id, // 使用插入后的用户ID
 			Name:               i18n.T(c, i18n.MsgUserDefaultTokenName, map[string]any{"Username": cleanUser.Username}),
-			Key:                key,
 			CreatedTime:        common.GetTimestamp(),
 			AccessedTime:       common.GetTimestamp(),
 			ExpiredTime:        -1,     // 永不过期
@@ -324,6 +317,12 @@ func Register(c *gin.Context) {
 		token.AllowUserQuotaQuery = true
 		if setting.DefaultUseAutoGroup {
 			token.Group = "auto"
+		}
+		// 只保存哈希，明文不会展示给用户；用户需要时可删除后新建令牌
+		if _, err := token.IssueKey(); err != nil {
+			common.ApiErrorT(c, "Failed to generate default token")
+			common.SysLog(common.LogText("failed to generate token key: %s", err.Error()))
+			return
 		}
 		if err := token.Insert(); err != nil {
 			common.ApiErrorT(c, "Failed to create default token")

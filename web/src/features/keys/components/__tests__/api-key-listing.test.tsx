@@ -420,31 +420,19 @@ it('keeps expired status when the server refuses reactivation', async () => {
   expect(post).not.toHaveBeenCalled()
 })
 
-it.each([true, false])(
-  'fetches a full key only on explicit copy and honors permission success=%s',
-  async (success) => {
-    const user = userEvent.setup()
-    const { post } = await renderKeysPage()
-    post.mockResolvedValue(
-      success
-        ? { data: { success: true, data: { key: 'fake-key-for-test-only' } } }
-        : { data: { success: false, message: 'Verification required' } }
-    )
-    const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
-    await user.click(screen.getByRole('button', { name: 'Open menu' }))
-    expect(post).not.toHaveBeenCalled()
-    await user.click(screen.getByRole('menuitem', { name: 'Copy Key' }))
-    await waitFor(() => expect(post).toHaveBeenCalledWith('/api/token/7/key'))
-    if (success) {
-      await waitFor(() =>
-        expect(copy).toHaveBeenCalledWith('sk-fake-key-for-test-only')
-      )
-    } else {
-      await screen.findByText('Verification required')
-      expect(copy).not.toHaveBeenCalled()
-    }
-  }
-)
+it('shows only the masked key and offers no way to reveal or copy it', async () => {
+  const { post } = await renderKeysPage()
+
+  expect(screen.getByText('sk-demo********1234')).toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Copy API key' })
+  ).not.toBeInTheDocument()
+  expect(
+    screen.queryByRole('button', { name: 'Open menu' })
+  ).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument()
+  expect(post).not.toHaveBeenCalled()
+})
 
 it('keeps full mobile information without group or quota section headings', async () => {
   const matchMedia = window.matchMedia

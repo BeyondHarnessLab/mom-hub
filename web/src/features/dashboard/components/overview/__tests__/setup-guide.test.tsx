@@ -148,7 +148,7 @@ describe('overview setup guide', () => {
     ).toEqual(['/keys', '/wallet', '/playground'])
     expect(within(panel).getByText('First API request')).toBeVisible()
     expect(
-      within(panel).getByRole('button', { name: 'Copy ready-to-run curl' })
+      within(panel).getByRole('button', { name: 'Copy curl' })
     ).toBeVisible()
     expect(
       screen.queryByRole('button', { name: /Create API Key/ })
@@ -177,6 +177,24 @@ describe('overview setup guide', () => {
         'curl https://api.example.com/v1/chat/completions \\'
       )
     ).toBeVisible()
+  })
+
+  it('copies the curl with a key placeholder without requesting the full key', async () => {
+    const user = userEvent.setup()
+    const post = vi.spyOn(api, 'post')
+    await renderOverview()
+    await user.click(await screen.findByRole('button', { name: 'Setup guide' }))
+    const copy = vi.spyOn(navigator.clipboard, 'writeText').mockResolvedValue()
+
+    const panel = screen.getByRole('region', { name: 'Setup guide' })
+    await user.click(within(panel).getByRole('button', { name: 'Copy curl' }))
+
+    await waitFor(() =>
+      expect(copy).toHaveBeenCalledWith(
+        expect.stringContaining('Authorization: Bearer YOUR_API_KEY')
+      )
+    )
+    expect(post).not.toHaveBeenCalled()
   })
 
   it('toggles the guide from the keyboard while focus stays on the header toggle', async () => {

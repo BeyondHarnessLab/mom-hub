@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/QuantumNous/new-api/common"
+
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"
 )
@@ -214,4 +216,47 @@ func migrateTokenKeyUniqueness(db *gorm.DB) error {
 		}
 		return nil
 	})
+}
+
+const tokenKeyHashBatchSize = 500
+
+// migrateTokenKeysToHash replaces API keys that older versions stored in
+// plaintext with their SHA-256 and masked hint. This version writes a hint
+// with every key, so an empty hint marks a plaintext row. Soft-deleted rows
+// are converted too. A row is only rewritten while its key still equals the
+// value read, so a rerun or a concurrent writer cannot hash a key twice.
+func migrateTokenKeysToHash(db *gorm.DB) error {
+	db = db.Session(&gorm.Session{})
+	converted := 0
+	for {
+		var tokens []Token
+		if err := db.Unscoped().Select("id", "key").
+			Where("key_hint IS NULL OR key_hint = ''").
+			Where(clause.Neq{Column: clause.Column{Name: "key"}, Value: ""}).
+			Order("id").Limit(tokenKeyHashBatchSize).Find(&tokens).Error; err != nil {
+			return fmt.Errorf("load plaintext token keys: %w", err)
+		}
+		if len(tokens) == 0 {
+			break
+		}
+		if err := db.Transaction(func(tx *gorm.DB) error {
+			for _, token := range tokens {
+				plaintext := token.Key
+				if err := tx.Unscoped().Model(&Token{}).
+					Where("id = ?", token.Id).
+					Where(clause.Eq{Column: clause.Column{Name: "key"}, Value: plaintext}).
+					Updates(map[string]any{"key": HashTokenKey(plaintext), "key_hint": MaskTokenKey(plaintext)}).Error; err != nil {
+					return err
+				}
+			}
+			return nil
+		}); err != nil {
+			return fmt.Errorf("hash token keys: %w", err)
+		}
+		converted += len(tokens)
+	}
+	if converted > 0 {
+		common.SysLog(common.LogText("hashed %d plaintext token keys", converted))
+	}
+	return nil
 }

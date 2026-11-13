@@ -81,7 +81,9 @@ type TokenCountMeta struct {
 }
 
 type RelayInfo struct {
-	TokenId           int
+	TokenId int
+	// TokenKey is the token's stored key hash, which keys its Redis cache entry; the
+	// plaintext API key is never kept after authentication.
 	TokenKey          string
 	TokenGroup        string
 	UserId            int

@@ -7359,6 +7359,15 @@
     "Model calls": "Appels de modèles",
     "Aggregator": "Agrégateur",
     "Advisor": "Conseiller",
-    "Analyst": "Analyste"
+    "Analyst": "Analyste",
+    "Save your API key": "Enregistrez votre clé API",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "La clé complète n'est affichée qu'une seule fois. Conservez-la en lieu sûr. Si vous la perdez, supprimez cette clé et créez-en une nouvelle.",
+    "I've saved it": "Je l'ai enregistrée",
+    "Use it in an app": "Utiliser dans une application",
+    "Copy curl": "Copier la commande curl",
+    "Open from a new API key": "Ouvrez-la depuis une nouvelle clé API",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} a besoin d'une clé API complète, qui n'est affichée qu'une seule fois à sa création. Créez une clé, puis ouvrez {{name}} depuis la fenêtre qui s'affiche ensuite.",
+    "Go to API keys": "Aller aux clés API",
+    "Paste a full API key...": "Collez une clé API complète..."
   }
 }

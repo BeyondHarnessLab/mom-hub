@@ -7359,6 +7359,15 @@
     "Model calls": "モデル呼び出し",
     "Aggregator": "アグリゲーター",
     "Advisor": "アドバイザー",
-    "Analyst": "アナリスト"
+    "Analyst": "アナリスト",
+    "Save your API key": "APIキーを保存してください",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "完全なキーが表示されるのはこの一度だけです。安全な場所に保管してください。紛失した場合は、このキーを削除して新しいキーを作成してください。",
+    "I've saved it": "保存しました",
+    "Use it in an app": "アプリで使う",
+    "Copy curl": "curl コマンドをコピー",
+    "Open from a new API key": "新しいAPIキーから開いてください",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} には完全なAPIキーが必要ですが、完全なキーは作成時に一度だけ表示されます。キーを作成し、続いて表示されるダイアログから {{name}} を開いてください。",
+    "Go to API keys": "APIキーへ移動",
+    "Paste a full API key...": "完全なAPIキーを貼り付け..."
   }
 }

@@ -7359,6 +7359,15 @@
     "Model calls": "Model calls",
     "Aggregator": "Aggregator",
     "Advisor": "Advisor",
-    "Analyst": "Analyst"
+    "Analyst": "Analyst",
+    "Save your API key": "Save your API key",
+    "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.": "This is the only time the full key is shown. Store it somewhere safe. If you lose it, delete this key and create a new one.",
+    "I've saved it": "I've saved it",
+    "Use it in an app": "Use it in an app",
+    "Copy curl": "Copy curl",
+    "Open from a new API key": "Open from a new API key",
+    "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.": "{{name}} needs a full API key, which is only shown once when the key is created. Create a key and open {{name}} from the dialog that follows.",
+    "Go to API keys": "Go to API keys",
+    "Paste a full API key...": "Paste a full API key..."
   }
 }

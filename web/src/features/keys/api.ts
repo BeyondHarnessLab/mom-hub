@@ -25,6 +25,7 @@ import type {
   GetApiKeysResponse,
   SearchApiKeysParams,
   ApiKeyFormData,
+  CreatedApiKey,
 } from './types'
 
 // ============================================================================
@@ -60,10 +61,11 @@ export async function getApiKey(id: number): Promise<ApiResponse<ApiKey>> {
   return res.data
 }
 
-// Create a new API key
+// Create a new API key. The response is the only place the full key appears;
+// the server keeps just its hash.
 export async function createApiKey(
   data: ApiKeyFormData
-): Promise<ApiResponse<ApiKey>> {
+): Promise<ApiResponse<CreatedApiKey>> {
   const res = await api.post('/api/token/', data)
   return res.data
 }
@@ -96,23 +98,5 @@ export async function updateApiKeyStatus(
   status: number
 ): Promise<ApiResponse<ApiKey>> {
   const res = await api.put('/api/token/?status_only=true', { id, status })
-  return res.data
-}
-
-// Fetch the real (unmasked) key for a token by ID
-export async function fetchTokenKey(
-  id: number
-): Promise<{ success: boolean; message?: string; data?: { key: string } }> {
-  const res = await api.post(`/api/token/${id}/key`)
-  return res.data
-}
-
-// Batch fetch real (unmasked) keys for multiple tokens
-export async function fetchTokenKeysBatch(ids: number[]): Promise<{
-  success: boolean
-  message?: string
-  data?: { keys: Record<number, string> }
-}> {
-  const res = await api.post('/api/token/batch/keys', { ids })
   return res.data
 }

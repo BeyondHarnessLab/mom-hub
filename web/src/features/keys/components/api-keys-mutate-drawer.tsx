@@ -87,7 +87,7 @@ export function ApiKeysMutateDrawer({
   const { t } = useTranslation()
   const isUpdate = !!currentRow
   const currentRowId = currentRow?.id
-  const { triggerRefresh } = useApiKeys()
+  const { triggerRefresh, showCreatedKey } = useApiKeys()
   const { status, loading: statusLoading } = useStatus()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [initializedTarget, setInitializedTarget] = useState<string | null>(
@@ -196,6 +196,7 @@ export function ApiKeysMutateDrawer({
           toast.success(t(SUCCESS_MESSAGES.API_KEY_CREATED))
           onOpenChange(false)
           triggerRefresh()
+          if (result.data?.key) showCreatedKey(result.data)
         } else {
           handleServerError(result, t(ERROR_MESSAGES.CREATE_FAILED))
         }

@@ -22,7 +22,6 @@ import {
   ArrowRight,
   Check,
   Circle,
-  Copy,
   CreditCard,
   KeyRound,
   TerminalSquare,
@@ -30,8 +29,8 @@ import {
 } from 'lucide-react'
 import { useId, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 
+import { CopyButton } from '@/components/copy-button'
 import { SectionPageLayout } from '@/components/layout'
 import {
   CardStaggerContainer,
@@ -39,13 +38,11 @@ import {
 } from '@/components/page-transition'
 import { Button } from '@/components/ui/button'
 import { IconBadge } from '@/components/ui/icon-badge'
-import { fetchTokenKey, getApiKeys } from '@/features/keys/api'
+import { getApiKeys } from '@/features/keys/api'
 import type { ApiKey } from '@/features/keys/types'
-import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard'
 import { useStatus } from '@/hooks/use-status'
 import { getUserModels } from '@/lib/api'
 import { getApiBaseUrl } from '@/lib/api-base-url'
-import { handleServerError } from '@/lib/handle-server-error'
 import { ROLE } from '@/lib/roles'
 import { requireServerSuccess } from '@/lib/server-error-message'
 import { cn } from '@/lib/utils'
@@ -68,8 +65,6 @@ interface StartStep {
 interface RequestExample {
   endpoint: string
   model: string
-  keyId?: number
-  displayKey: string
   ready: boolean
 }
 
@@ -111,12 +106,6 @@ function normalizeEndpoint(sourceUrl?: string): string {
 
 function getPreferredKey(keys: ApiKey[]): ApiKey | null {
   return keys.find((item) => item.status === 1) ?? keys[0] ?? null
-}
-
-function formatDisplayKey(key?: string): string {
-  if (!key) return 'sk-...'
-  if (key.length <= 14) return key
-  return `${key.slice(0, 7)}...${key.slice(-4)}`
 }
 
 function buildCurlCommand(args: {
@@ -189,44 +178,18 @@ function StartStepItem(props: {
   )
 }
 
+// The full key cannot be fetched after creation, so the example carries a
+// placeholder for the user to replace with the key they saved.
+const API_KEY_PLACEHOLDER = 'YOUR_API_KEY'
+
 function RequestPreview(props: { example: RequestExample }) {
   const { t } = useTranslation()
-  const [isCopying, setIsCopying] = useState(false)
-  const { copyToClipboard } = useCopyToClipboard({ notify: false })
-  const previewLines = buildCurlCommand({
+  const curl = buildCurlCommand({
     endpoint: props.example.endpoint,
-    apiKey: props.example.displayKey,
+    apiKey: API_KEY_PLACEHOLDER,
     model: props.example.model,
-  }).split('\n')
-  const handleCopyRequest = async () => {
-    if (!props.example.keyId || isCopying) return
-
-    setIsCopying(true)
-    try {
-      const result = await fetchTokenKey(props.example.keyId)
-      const key = result.success && result.data?.key ? result.data.key : ''
-      if (!key) {
-        handleServerError(result, t('Failed to copy to clipboard'))
-        return
-      }
-
-      const realCurl = buildCurlCommand({
-        endpoint: props.example.endpoint,
-        apiKey: `sk-${key}`,
-        model: props.example.model,
-      })
-      const copied = await copyToClipboard(realCurl)
-      if (copied) {
-        toast.success(t('Copied to clipboard'))
-      } else {
-        toast.error(t('Failed to copy to clipboard'))
-      }
-    } catch (error) {
-      handleServerError(error, t('Failed to copy to clipboard'))
-    } finally {
-      setIsCopying(false)
-    }
-  }
+  })
+  const previewLines = curl.split('\n')
 
   return (
     <div className='bg-background/70 flex min-w-0 flex-col gap-3 rounded-2xl border p-3'>
@@ -240,17 +203,15 @@ function RequestPreview(props: { example: RequestExample }) {
           </span>
         </div>
         {props.example.ready && (
-          <Button
+          <CopyButton
+            value={curl}
             variant='outline'
             size='sm'
             className='h-7 gap-1.5 px-2 text-xs'
-            disabled={isCopying}
-            onClick={handleCopyRequest}
-            aria-label={t('Copy ready-to-run curl')}
+            aria-label={t('Copy curl')}
           >
-            <Copy data-icon='inline-start' />
-            {isCopying ? t('Loading') : t('Copy')}
-          </Button>
+            {t('Copy')}
+          </CopyButton>
         )}
       </div>
 
@@ -335,10 +296,6 @@ export function OverviewDashboard() {
     return {
       endpoint: normalizeEndpoint(getApiBaseUrl(status)),
       model,
-      keyId: preferredKey?.id,
-      displayKey: preferredKey
-        ? formatDisplayKey(`sk-${preferredKey.key}`)
-        : 'sk-...',
       ready: Boolean(preferredKey?.id && model),
     }
   }, [modelsQuery.data, preferredKey, status])

@@ -20,7 +20,6 @@ import { ApiKeysDeleteDialog } from './api-keys-delete-dialog'
 import { ApiKeysMutateDrawer } from './api-keys-mutate-drawer'
 import { useApiKeys } from './api-keys-provider'
 import { ApiKeyCreatedDialog } from './dialogs/api-key-created-dialog'
-import { CCSwitchDialog } from './dialogs/cc-switch-dialog'
 
 export function ApiKeysDialogs() {
   const { open, setOpen, currentRow, createdKey, dismissCreatedKey } =
@@ -41,15 +40,8 @@ export function ApiKeysDialogs() {
           name={createdKey.name}
           apiKey={createdFullKey}
           onClose={dismissCreatedKey}
-          onOpenCCSwitch={() => setOpen('cc-switch')}
         />
       )}
-      {/* CC Switch is reached from the created-key dialog and returns to it. */}
-      <CCSwitchDialog
-        open={open === 'cc-switch' && createdKey !== null}
-        onOpenChange={(isOpen) => !isOpen && setOpen('created')}
-        tokenKey={createdFullKey}
-      />
     </>
   )
 }
